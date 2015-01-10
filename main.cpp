@@ -1,22 +1,36 @@
 #include <climits>
+#include <stack>
 #include <unistd.h>
 #include <State.h>
+using namespace std;
 
 #define OTHER(player) ((player) == Player::WHITE ? Player::BLACK : Player::WHITE)
-#define MAX_DEPTH 20
 
-static void pushState() {}
-static void popState() {}
+static stack<State> history;
+static int getCurrDepth() {
+  return history.size();
+}
 
-static int evaluate(State& s, Player player, int level, int alpha, int beta) {
+static void pushState(const State& s) {
+  history.push(s);
+}
+
+// FIXME: check whether we need to return the state or not
+static State popState() {
+  State s = history.top();
+  history.pop();
+  return s;
+}
+
+static int evaluate(State& s, Player player, int maxDepth, int alpha, int beta) {
   const Player winner = s.getWinner();
   if (winner == player) {
-    return INT_MAX - MAX_DEPTH;
+    return INT_MAX - getCurrDepth();
   }
   else if (winner == OTHER(player)) {
-    return -(INT_MAX - MAX_DEPTH);
+    return -(INT_MAX - getCurrDepth());
   }
-  else if (level == MAX_DEPTH) {
+  else if (maxDepth == getCurrDepth()) {
     return s.getGoodness(player);
   }
   else {
@@ -24,10 +38,10 @@ static int evaluate(State& s, Player player, int level, int alpha, int beta) {
     int maxab = alpha;
     vector<Move> moves = s.getMoves(player);
     for (vector<Move>::iterator it = moves.begin(); it != moves.end(); ++it) {
-      pushState();
+      pushState(s);
 
       s.movePiece(it->piece, it->dir);
-      int goodness = evaluate(s, OTHER(player), level, -beta, -maxab);
+      int goodness = evaluate(s, OTHER(player), maxDepth, -beta, -maxab);
       if (goodness > best) {
         best = goodness;
         if (best > maxab) {
@@ -35,7 +49,7 @@ static int evaluate(State& s, Player player, int level, int alpha, int beta) {
         }
       }
 
-      popState();
+      s = popState();
 
       if (best > beta) {
         break;
@@ -46,21 +60,21 @@ static int evaluate(State& s, Player player, int level, int alpha, int beta) {
   }
 }
 
-static string makeMove(State& s, const Player player, int level) {
+static string makeMove(State& s, const Player player, int maxDepth) {
   vector<Move> moves = s.getMoves(player);
   Move* bestMove = NULL;
   int goodness = 0;
   int bestWorst = -INT_MAX;
   for (vector<Move>::iterator it = moves.begin(); it != moves.end(); ++it) {
-    pushState();
+    pushState(s);
 
     s.movePiece(it->piece, it->dir);
     if (s.getWinner() == player) {
       bestMove = &*it;
-      popState();
+      s = popState();
       break;
     } else {
-      goodness = evaluate(s, player, level, -INT_MAX, -bestWorst);
+      goodness = evaluate(s, player, maxDepth, -INT_MAX, -bestWorst);
       if (goodness > bestWorst) {
         bestWorst = goodness;
         bestMove = &*it;
@@ -71,7 +85,7 @@ static string makeMove(State& s, const Player player, int level) {
       }
     }
 
-    popState();
+    s = popState();
   }
 
   return bestMove ? bestMove->toString() : "";
