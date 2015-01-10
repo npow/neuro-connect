@@ -4,7 +4,7 @@
 #include <State.h>
 using namespace std;
 
-#define OTHER(player) ((player) == Player::WHITE ? Player::BLACK : Player::WHITE)
+#define USE_AB_PRUNING 0
 
 static stack<State> history;
 static int getCurrDepth() {
@@ -37,10 +37,10 @@ static int evaluate(State& s, const Player player, const int maxDepth, const int
     int best = -(numeric_limits<int>::max());
     int maxab = alpha;
     vector<Move> moves = s.getMoves(player);
-    for (vector<Move>::iterator it = moves.begin(); it != moves.end(); ++it) {
+    for (auto& move : moves) {
       pushState(s);
 
-      s.movePiece(it->piece, it->dir);
+      s.movePiece(move.piece, move.dir);
       int goodness = evaluate(s, OTHER(player), maxDepth, -beta, -maxab);
       if (goodness > best) {
         best = goodness;
@@ -51,9 +51,11 @@ static int evaluate(State& s, const Player player, const int maxDepth, const int
 
       s = popState();
 
+#if USE_AB_PRUNING
       if (best > beta) {
         break;
       }
+#endif
     }
 
     return -best;
@@ -65,22 +67,22 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   Move* bestMove = NULL;
   int goodness = 0;
   int bestWorst = -numeric_limits<int>::max();
-  for (vector<Move>::iterator it = moves.begin(); it != moves.end(); ++it) {
+  for (auto& move : moves) {
     pushState(s);
 
-    s.movePiece(it->piece, it->dir);
+    s.movePiece(move.piece, move.dir);
     if (s.getWinner() == player) {
-      bestMove = &*it;
+      bestMove = &move;
       s = popState();
       break;
     } else {
       goodness = evaluate(s, player, maxDepth, -numeric_limits<int>::max(), -bestWorst);
       if (goodness > bestWorst) {
         bestWorst = goodness;
-        bestMove = &*it;
+        bestMove = &move;
       } else if (goodness == bestWorst) {
         if (rand() % 2 == 0) {
-          bestMove = &*it;
+          bestMove = &move;
         }
       }
     }

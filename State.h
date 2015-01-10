@@ -1,15 +1,18 @@
 #ifndef INCLUDED_STATE_H
 #define INCLUDED_STATE_H
 
+#include <algorithm>
 #include <cstddef>
-#include <vector>
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <vector>
 using namespace std;
 
 #define NUM_PIECES_PER_SIDE 4
 #define WHITE_CHAR '0'
 #define BLACK_CHAR '1'
+#define OTHER(player) ((player) == Player::WHITE ? Player::BLACK : Player::WHITE)
 
 enum Direction {
   N = 0,
@@ -125,11 +128,25 @@ class State {
       }
     }
 
-    int getGoodness(Player player) const {
-      return 0;
+    int getGoodness(const Player player) const {
+      return getNumRuns(player) - getNumRuns(OTHER(player));
     }
 
   private:
+    int getNumRuns(const Player player) const {
+      const auto ps = getCombinations(NUM_PIECES_PER_SIDE, 2);
+      int offset = player == Player::WHITE ? 0 : NUM_PIECES_PER_SIDE;
+      int numRuns = 0;
+      for (const auto& p : ps) {
+        const auto& A = m_pieces[p.first];
+        const auto& B = m_pieces[p.second];
+        if (isAdjacent(A.x, A.y, B.x, B.y)) {
+          numRuns++;
+        }
+      }
+      return numRuns;
+    }
+
     bool hasPlayerWon(const vector<Piece>& pieces) const {
       for (int i = 0; i < NUM_PIECES_PER_SIDE; ++i) {
         vector<Piece> tmp = pieces; // copy
@@ -152,9 +169,34 @@ class State {
       return (y1 - y2) * (x1 - x3) == (y1 - y3) * (x1 - x2);
     }
 
+    bool isAdjacent(const int x1, const int y1, const int x2, const int y2) const {
+      const int dx = abs(x1 - x2);
+      const int dy = abs(y1 - y2);
+      const int dist = dx + dy;
+      return dist == 1 || dist == 2;
+    }
+
+    vector< pair<int, int> > getCombinations(const int n, const int r) const {
+      vector< pair<int, int> > res;
+
+      vector<bool> v(n);
+      fill(v.begin() + n - r, v.end(), true);
+
+      do {
+        pair<int, int> p(-1, -1);
+        for (int i = 0; i < n; ++i) {
+          if (v[i]) {
+            (p.first == -1 ? p.first : p.second) = i;
+          }
+        }
+        res.push_back(p);
+      } while (next_permutation(v.begin(), v.end()));
+
+      return res;
+    }
+
     Piece* findPiece(const int x, const int y) {
-      for (vector<Piece>::iterator it = m_pieces.begin(); it != m_pieces.end(); ++it) {
-        Piece& piece = *it;
+      for (auto& piece : m_pieces) {
         if (piece.x == x && piece.y == y) {
           return &piece;
         }
