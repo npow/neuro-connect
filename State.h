@@ -3,9 +3,12 @@
 
 #include <cstddef>
 #include <vector>
+#include <iostream>
 using namespace std;
 
 #define NUM_PIECES 8
+#define WHITE_CHAR '0'
+#define BLACK_CHAR '1'
 
 enum Direction {
   N = 0,
@@ -51,34 +54,6 @@ class State {
       return movePiece(findPiece(x, y), dir);
     }
 
-    Piece* findPiece(const int x, const int y) {
-      for (vector<Piece>::iterator it = m_pieces.begin(); it != m_pieces.end(); ++it) {
-        Piece& piece = *it;
-        if (piece.x == x && piece.y == y) {
-          return &piece;
-        }
-      }
-      return NULL;
-    }
-
-    bool movePiece(Piece* piece, const Direction dir) {
-      if (!piece) return false;
-      if (Direction::N == dir) {
-        if (piece->y == 1 || findPiece(piece->x, piece->y-1)) return false;
-        piece->y -= 1;
-      } else if (Direction::S == dir) {
-        if (piece->y == m_height || findPiece(piece->x, piece->y+1)) return false;
-        piece->y += 1;
-      } else if (Direction::E == dir) {
-        if (piece->x == m_width || findPiece(piece->x+1, piece->y)) return false;
-        piece->x += 1;
-      } else if (Direction::W == dir) {
-        if (piece->x == 0 || findPiece(piece->x-1, piece->y)) return false;
-        piece->x -= 1;
-      }
-      return true;
-    }
-
     Status getStatus() const {
       if (hasWhiteWon()) return Status::WHITE_WON;
       else if (hasBlackWon()) return Status::BLACK_WON;
@@ -109,6 +84,27 @@ class State {
       return false;
     }
 
+    void print() const {
+      char grid[m_height][m_width];
+      for (int i = 0; i < m_height; ++i) {
+        for (int j = 0; j < m_width; ++j) {
+          grid[i][j] = '_';
+        }
+      }
+      for (int i = 0; i < m_pieces.size(); ++i) {
+        const bool isWhite = (i < 4);
+        const Piece& piece = m_pieces[i];
+        grid[piece.y-1][piece.x-1] = (isWhite ? WHITE_CHAR : BLACK_CHAR);
+      }
+      for (int i = 0; i < m_height; ++i) {
+        for (int j = 0; j < m_width; ++j) {
+          cout << (j == 0 ? "" : ",") << grid[i][j];
+        }
+        cout << endl;
+      }
+    }
+
+  private:
     bool isConnected(const vector<Piece>& pieces) const {
       const Piece& A = pieces[0];
       const Piece& B = pieces[1];
@@ -118,6 +114,34 @@ class State {
 
     bool isCollinear(int x1, int y1, int x2, int y2, int x3, int y3) const {
       return (y1 - y2) * (x1 - x3) == (y1 - y3) * (x1 - x2);
+    }
+
+    Piece* findPiece(const int x, const int y) {
+      for (vector<Piece>::iterator it = m_pieces.begin(); it != m_pieces.end(); ++it) {
+        Piece& piece = *it;
+        if (piece.x == x && piece.y == y) {
+          return &piece;
+        }
+      }
+      return NULL;
+    }
+
+    bool movePiece(Piece* piece, const Direction dir) {
+      if (!piece) return false;
+      if (Direction::N == dir) {
+        if (piece->y == 1 || findPiece(piece->x, piece->y-1)) return false;
+        piece->y -= 1;
+      } else if (Direction::S == dir) {
+        if (piece->y == m_height || findPiece(piece->x, piece->y+1)) return false;
+        piece->y += 1;
+      } else if (Direction::E == dir) {
+        if (piece->x == m_width || findPiece(piece->x+1, piece->y)) return false;
+        piece->x += 1;
+      } else if (Direction::W == dir) {
+        if (piece->x == 0 || findPiece(piece->x-1, piece->y)) return false;
+        piece->x -= 1;
+      }
+      return true;
     }
 
   private:
