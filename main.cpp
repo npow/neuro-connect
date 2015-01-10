@@ -22,7 +22,7 @@ static State popState() {
   return s;
 }
 
-static int evaluate(State& s, Player player, int maxDepth, int alpha, int beta) {
+static int evaluate(State& s, const Player player, const int maxDepth, const int alpha, const int beta) {
   const Player winner = s.getWinner();
   if (winner == player) {
     return INT_MAX - getCurrDepth();
@@ -60,7 +60,7 @@ static int evaluate(State& s, Player player, int maxDepth, int alpha, int beta) 
   }
 }
 
-static string makeMove(State& s, const Player player, int maxDepth) {
+static string makeMove(State& s, const Player player, const int maxDepth) {
   vector<Move> moves = s.getMoves(player);
   Move* bestMove = NULL;
   int goodness = 0;

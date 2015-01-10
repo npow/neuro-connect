@@ -44,7 +44,7 @@ struct Move {
 
 class State {
   public:
-    State(int width, int height) : m_width(width), m_height(height) {
+    State(const int width, const int height) : m_width(width), m_height(height) {
       const int offset = (7 == width && 6 == height ? 1 : 0);
 
       m_pieces.push_back(Piece(1+offset, 1+offset));
@@ -71,7 +71,7 @@ class State {
       return movePiece(findPiece(x, y), dir);
     }
 
-    bool movePiece(Piece* piece, const Direction dir) {
+    bool movePiece(Piece* const piece, const Direction dir) {
       if (!piece) return false;
       if (Direction::N == dir) {
         if (piece->y == 1 || findPiece(piece->x, piece->y-1)) return false;
