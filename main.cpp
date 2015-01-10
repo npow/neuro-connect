@@ -1,12 +1,13 @@
 #include <cassert>
 #include <limits>
+#include <memory>
 #include <stack>
 #include <unistd.h>
 #include <State.h>
 using namespace std;
 
-#define USE_AB_PRUNING 0
-#define MAX_DEPTH 5
+#define USE_AB_PRUNING 1
+#define MAX_DEPTH 8
 
 static stack<State> history;
 static int getCurrDepth() {
@@ -43,7 +44,7 @@ static int evaluate(State& s, const Player player, const int maxDepth, const int
     for (auto& move : moves) {
       pushState(s);
 
-      assert(s.movePiece(move.piece, move.dir));
+      assert(s.move(move.x, move.y, move.dir));
       int goodness = evaluate(s, OTHER(player), maxDepth, -beta, -maxab);
       if (goodness > best) {
         best = goodness;
@@ -67,25 +68,25 @@ static int evaluate(State& s, const Player player, const int maxDepth, const int
 
 static string makeMove(State& s, const Player player, const int maxDepth) {
   vector<Move> moves = s.getMoves(player);
-  Move* bestMove = NULL;
+  shared_ptr<Move> bestMove;
   int goodness = 0;
   int bestWorst = -numeric_limits<int>::max();
   for (auto& move : moves) {
     pushState(s);
 
-    assert(s.movePiece(move.piece, move.dir));
+    assert(s.move(move.x, move.y, move.dir));
     if (s.getWinner() == player) {
-      bestMove = &move;
+      bestMove = make_shared<Move>(move);
       s = popState();
       break;
     } else {
       goodness = evaluate(s, player, maxDepth, -numeric_limits<int>::max(), -bestWorst);
       if (goodness > bestWorst) {
         bestWorst = goodness;
-        bestMove = &move;
+        bestMove = make_shared<Move>(move);
       } else if (goodness == bestWorst) {
         if (rand() % 2 == 0) {
-          bestMove = &move;
+          bestMove = make_shared<Move>(move);
         }
       }
     }
@@ -94,7 +95,7 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   }
 
   if (bestMove) {
-    s.movePiece(bestMove->piece, bestMove->dir);
+    s.move(bestMove->x, bestMove->y, bestMove->dir);
     return bestMove->toString();
   }
   return "";
@@ -153,6 +154,7 @@ int main(int argc, char* const argv[]) {
       }
     }
     s.print();
+    currTurn = OTHER(currTurn);
   }
   return 0;
 }

@@ -36,16 +36,17 @@ struct Piece {
 };
 
 struct Move {
-  Move() : piece(NULL), dir(Direction::END) {}
-  Move(Piece* const piece, Direction dir) : piece(piece), dir(dir) {}
+  Move() : x(0), y(0), dir(Direction::END) {}
+  Move(const int x, const int y, Direction dir) : x(x), y(y), dir(dir) {}
 
-  Piece* piece;
+  int x;
+  int y;
   Direction dir;
   string toString() const {
     static const char dirStr[4] = { 'N', 'S', 'E', 'W' };
     stringstream ss;
-    if (piece) {
-      ss << piece->x << piece->y << dirStr[dir];
+    if (x && y) {
+      ss << x << y << dirStr[dir];
     }
     return ss.str();
   }
@@ -77,7 +78,7 @@ class State {
         Piece& piece = m_pieces[offset + i];
         for (int dir = Direction::N; dir != Direction::END; ++dir) {
           if (isValidMove(&piece, static_cast<Direction>(dir))) {
-            v.push_back(Move(&piece, static_cast<Direction>(dir)));
+            v.push_back(Move(piece.x, piece.y, static_cast<Direction>(dir)));
           }
         }
       }
@@ -189,7 +190,9 @@ class State {
       const Piece& A = pieces[0];
       const Piece& B = pieces[1];
       const Piece& C = pieces[2];
-      return isCollinear(A.x, A.y, B.x, B.y, C.x, C.y);
+      return isCollinear(A.x, A.y, B.x, B.y, C.x, C.y) &&
+             isAdjacent(A.x, A.y, B.x, B.y) &&
+             isAdjacent(B.x, B.y, C.x, C.y);
     }
 
     bool isCollinear(int x1, int y1, int x2, int y2, int x3, int y3) const {
@@ -200,7 +203,7 @@ class State {
       const int dx = abs(x1 - x2);
       const int dy = abs(y1 - y2);
       const int dist = dx + dy;
-      return dist == 1 || dist == 2;
+      return (dx + dy == 1) || (dx == 1 && dy == 1);
     }
 
     vector< pair<int, int> > getCombinations(const int n, const int r) const {
@@ -232,7 +235,7 @@ class State {
           return &piece;
         }
       }
-      return NULL;
+      return nullptr;
     }
 
   private:
