@@ -23,9 +23,9 @@ enum Direction {
 };
 
 enum Player {
-  NONE = 0,
-  WHITE = 1,
-  BLACK = 2
+  WHITE = 0,
+  BLACK = 1,
+  NONE = 2
 };
 
 struct Piece {
@@ -57,25 +57,31 @@ class State {
     State(const int width, const int height) : m_width(width), m_height(height) {
       const int offset = (7 == width && 6 == height ? 1 : 0);
 
-      m_pieces.push_back(Piece(1+offset, 1+offset));
-      m_pieces.push_back(Piece(5+offset, 2+offset));
-      m_pieces.push_back(Piece(1+offset, 3+offset));
-      m_pieces.push_back(Piece(5+offset, 4+offset));
+      getPieces(Player::WHITE).push_back(Piece(1+offset, 1+offset));
+      getPieces(Player::WHITE).push_back(Piece(5+offset, 2+offset));
+      getPieces(Player::WHITE).push_back(Piece(1+offset, 3+offset));
+      getPieces(Player::WHITE).push_back(Piece(5+offset, 4+offset));
 
-      m_pieces.push_back(Piece(5+offset, 1+offset));
-      m_pieces.push_back(Piece(1+offset, 2+offset));
-      m_pieces.push_back(Piece(5+offset, 3+offset));
-      m_pieces.push_back(Piece(1+offset, 4+offset));
+      getPieces(Player::BLACK).push_back(Piece(5+offset, 1+offset));
+      getPieces(Player::BLACK).push_back(Piece(1+offset, 2+offset));
+      getPieces(Player::BLACK).push_back(Piece(5+offset, 3+offset));
+      getPieces(Player::BLACK).push_back(Piece(1+offset, 4+offset));
     }
 
     ~State() {
     }
 
-    vector<Move> getMoves(Player player) {
-      const int offset = player == Player::WHITE ? 0 : NUM_PIECES_PER_SIDE;
+    vector<Piece>& getPieces(const Player player) {
+      return m_pieces[static_cast<int>(player)];
+    }
+
+    const vector<Piece>& getPieces(const Player player) const {
+      return m_pieces[static_cast<int>(player)];
+    }
+
+    vector<Move> getMoves(const Player player) const {
       vector<Move> v;
-      for (int i = 0; i < NUM_PIECES_PER_SIDE; ++i) {
-        Piece& piece = m_pieces[offset + i];
+      for (auto& piece : getPieces(player)) {
         for (int dir = Direction::N; dir != Direction::END; ++dir) {
           if (isValidMove(&piece, static_cast<Direction>(dir))) {
             v.push_back(Move(piece.x, piece.y, static_cast<Direction>(dir)));
@@ -119,19 +125,9 @@ class State {
     }
 
     Player getWinner() const {
-      if (hasWhiteWon()) return Player::WHITE;
-      else if (hasBlackWon()) return Player::BLACK;
+      if (hasPlayerWon(getPieces(Player::WHITE))) return Player::WHITE;
+      else if (hasPlayerWon(getPieces(Player::BLACK))) return Player::BLACK;
       else return Player::NONE;
-    }
-
-    bool hasWhiteWon() const {
-      vector<Piece> pieces(m_pieces.begin(), m_pieces.begin()+NUM_PIECES_PER_SIDE);
-      return hasPlayerWon(pieces);
-    }
-
-    bool hasBlackWon() const {
-      vector<Piece> pieces(m_pieces.begin()+NUM_PIECES_PER_SIDE, m_pieces.end());
-      return hasPlayerWon(pieces);
     }
 
     void print() const {
@@ -142,10 +138,11 @@ class State {
           grid[i][j] = '_';
         }
       }
-      for (int i = 0; i < m_pieces.size(); ++i) {
-        const bool isWhite = (i < NUM_PIECES_PER_SIDE);
-        const Piece& piece = m_pieces[i];
-        grid[piece.y-1][piece.x-1] = (isWhite ? WHITE_CHAR : BLACK_CHAR);
+      for (const auto& piece : getPieces(Player::WHITE)) {
+        grid[piece.y-1][piece.x-1] = WHITE_CHAR;
+      }
+      for (const auto& piece : getPieces(Player::BLACK)) {
+        grid[piece.y-1][piece.x-1] = BLACK_CHAR;
       }
       for (int i = 0; i < m_height; ++i) {
         for (int j = 0; j < m_width; ++j) {
@@ -163,11 +160,11 @@ class State {
   private:
     int getNumRuns(const Player player) const {
       const auto ps = getCombinations(NUM_PIECES_PER_SIDE, 2);
-      const int offset = player == Player::WHITE ? 0 : NUM_PIECES_PER_SIDE;
+      const vector<Piece>& pieces = getPieces(player);
       int numRuns = 0;
       for (const auto& p : ps) {
-        const auto& A = m_pieces[offset + p.first];
-        const auto& B = m_pieces[offset + p.second];
+        const auto& A = pieces[p.first];
+        const auto& B = pieces[p.second];
         if (isAdjacent(A.x, A.y, B.x, B.y)) {
           numRuns++;
         }
@@ -176,7 +173,7 @@ class State {
     }
 
     bool hasPlayerWon(const vector<Piece>& pieces) const {
-      for (int i = 0; i < NUM_PIECES_PER_SIDE; ++i) {
+      for (int i = 0; i < pieces.size(); ++i) {
         vector<Piece> tmp = pieces; // copy
         tmp.erase(tmp.begin() + i);
         if (isConnected(tmp)) {
@@ -230,7 +227,12 @@ class State {
     }
 
     const Piece* findPiece(const int x, const int y) const {
-      for (const auto& piece : m_pieces) {
+      for (const auto& piece : getPieces(Player::WHITE)) {
+        if (piece.x == x && piece.y == y) {
+          return &piece;
+        }
+      }
+      for (const auto& piece : getPieces(Player::BLACK)) {
         if (piece.x == x && piece.y == y) {
           return &piece;
         }
@@ -239,7 +241,7 @@ class State {
     }
 
   private:
-    vector<Piece> m_pieces; // 0-3 are white, 4-7 are black
+    vector<Piece> m_pieces[2];
     int m_width;
     int m_height;
 };
