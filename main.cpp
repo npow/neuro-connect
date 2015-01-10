@@ -1,3 +1,4 @@
+#include <cassert>
 #include <limits>
 #include <stack>
 #include <unistd.h>
@@ -35,13 +36,14 @@ static int evaluate(State& s, const Player player, const int maxDepth, const int
     return s.getGoodness(player);
   }
   else {
+    // now it's the other player's turn
     int best = -(numeric_limits<int>::max());
     int maxab = alpha;
-    vector<Move> moves = s.getMoves(player);
+    vector<Move> moves = s.getMoves(OTHER(player));
     for (auto& move : moves) {
       pushState(s);
 
-      s.movePiece(move.piece, move.dir);
+      assert(s.movePiece(move.piece, move.dir));
       int goodness = evaluate(s, OTHER(player), maxDepth, -beta, -maxab);
       if (goodness > best) {
         best = goodness;
@@ -71,7 +73,7 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   for (auto& move : moves) {
     pushState(s);
 
-    s.movePiece(move.piece, move.dir);
+    assert(s.movePiece(move.piece, move.dir));
     if (s.getWinner() == player) {
       bestMove = &move;
       s = popState();
@@ -91,7 +93,11 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
     s = popState();
   }
 
-  return bestMove ? bestMove->toString() : "";
+  if (bestMove) {
+    s.movePiece(bestMove->piece, bestMove->dir);
+    return bestMove->toString();
+  }
+  return "";
 }
 
 int main(int argc, char* const argv[]) {
