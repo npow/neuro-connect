@@ -73,7 +73,7 @@ class State {
     vector<Move> getMoves(Player player) {
       const int offset = player == Player::WHITE ? 0 : NUM_PIECES_PER_SIDE;
       vector<Move> v;
-      for (int i = 0; i < m_pieces.size(); ++i) {
+      for (int i = 0; i < NUM_PIECES_PER_SIDE; ++i) {
         Piece& piece = m_pieces[offset + i];
         for (int dir = Direction::N; dir != Direction::END; ++dir) {
           if (isValidMove(&piece, static_cast<Direction>(dir))) {
@@ -112,7 +112,7 @@ class State {
       } else if (Direction::E == dir) {
         if (piece->x == m_width || findPiece(piece->x+1, piece->y)) return false;
       } else if (Direction::W == dir) {
-        if (piece->x == 0 || findPiece(piece->x-1, piece->y)) return false;
+        if (piece->x == 1 || findPiece(piece->x-1, piece->y)) return false;
       }
       return true;
     }
@@ -134,6 +134,7 @@ class State {
     }
 
     void print() const {
+      cout << "==========" << endl;
       char grid[m_height][m_width];
       for (int i = 0; i < m_height; ++i) {
         for (int j = 0; j < m_width; ++j) {
@@ -151,6 +152,7 @@ class State {
         }
         cout << endl;
       }
+      cout << "==========" << endl;
     }
 
     int getGoodness(const Player player) const {
@@ -221,12 +223,7 @@ class State {
     }
 
     Piece* findPiece(const int x, const int y) {
-      for (auto& piece : m_pieces) {
-        if (piece.x == x && piece.y == y) {
-          return &piece;
-        }
-      }
-      return NULL;
+      return const_cast<Piece*>(static_cast<const State*>(this)->findPiece(x, y));
     }
 
     const Piece* findPiece(const int x, const int y) const {
