@@ -6,7 +6,7 @@
 #include <iostream>
 using namespace std;
 
-#define NUM_PIECES 8
+#define NUM_PIECES_PER_SIDE 4
 #define WHITE_CHAR '0'
 #define BLACK_CHAR '1'
 
@@ -61,8 +61,8 @@ class State {
     }
 
     bool hasWhiteWon() const {
-      vector<Piece> pieces(m_pieces.begin(), m_pieces.begin()+4);
-      for (int i = 0; i < 4; ++i) {
+      vector<Piece> pieces(m_pieces.begin(), m_pieces.begin()+NUM_PIECES_PER_SIDE);
+      for (int i = 0; i < NUM_PIECES_PER_SIDE; ++i) {
         vector<Piece> tmp = pieces; // copy
         tmp.erase(tmp.begin() + i);
         if (isConnected(tmp)) {
@@ -73,8 +73,8 @@ class State {
     }
 
     bool hasBlackWon() const {
-      vector<Piece> pieces(m_pieces.begin()+4, m_pieces.end());
-      for (int i = 0; i < 4; ++i) {
+      vector<Piece> pieces(m_pieces.begin()+NUM_PIECES_PER_SIDE, m_pieces.end());
+      for (int i = 0; i < NUM_PIECES_PER_SIDE; ++i) {
         vector<Piece> tmp = pieces; // copy
         tmp.erase(tmp.begin() + i);
         if (isConnected(tmp)) {
@@ -92,7 +92,7 @@ class State {
         }
       }
       for (int i = 0; i < m_pieces.size(); ++i) {
-        const bool isWhite = (i < 4);
+        const bool isWhite = (i < NUM_PIECES_PER_SIDE);
         const Piece& piece = m_pieces[i];
         grid[piece.y-1][piece.x-1] = (isWhite ? WHITE_CHAR : BLACK_CHAR);
       }
