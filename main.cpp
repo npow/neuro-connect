@@ -5,6 +5,7 @@
 using namespace std;
 
 #define USE_AB_PRUNING 0
+#define MAX_DEPTH 5
 
 static stack<State> history;
 static int getCurrDepth() {
@@ -94,11 +95,15 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
 }
 
 int main(int argc, char* const argv[]) {
+  bool isAuto = false;
   bool isWhite = true;
   bool isSmallBoard = true;
   char c = '\0';
-  while ((c = getopt(argc, argv, "blh")) != -1) {
+  while ((c = getopt(argc, argv, "ablh")) != -1) {
     switch (c) {
+      case 'a':
+        isAuto = true;
+        break;
       case 'b':
         isWhite = false;
         break;
@@ -106,9 +111,11 @@ int main(int argc, char* const argv[]) {
         isSmallBoard = false;
         break;
       case 'h':
-        cout << "Usage: " << argv[0] << " [-b] [-l]" << endl
+        cout << "Usage: " << argv[0] << " [-a] [-b] [-l] [-h]" << endl
+             << "\t-a\tAuto-mode. Play against itself." << endl
              << "\t-b\tPlay as black. Default is white. " << endl
-             << "\t-l\tUse large board. Default is small board." << endl;
+             << "\t-l\tUse large board. Default is small board." << endl
+             << "\t-h\tDisplay this help message." << endl;
         return 1;
     }
   }
@@ -123,6 +130,23 @@ int main(int argc, char* const argv[]) {
   }
 
   State s(width, height);
-  s.print();
+  Player currTurn = Player::WHITE; // white starts
+  const Player player = isWhite ? Player::WHITE : Player::BLACK;
+  while (s.getWinner() == Player::NONE) {
+    if (currTurn == player) {
+      string res = makeMove(s, currTurn, MAX_DEPTH);
+      cout << res << endl;
+    } else {
+      if (isAuto) {
+        string res = makeMove(s, currTurn, MAX_DEPTH);
+        cout << res << endl;
+      } else {
+        string cmd;
+        cin >> cmd;
+        cout << "Got: " << cmd << endl;
+      }
+    }
+    s.print();
+  }
   return 0;
 }

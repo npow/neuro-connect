@@ -18,7 +18,8 @@ enum Direction {
   N = 0,
   S = 1,
   E = 2,
-  W = 3
+  W = 3,
+  END = 4
 };
 
 enum Player {
@@ -29,18 +30,23 @@ enum Player {
 
 struct Piece {
   Piece() : x(0), y(0) {}
-  Piece(int x_, int y_) : x(x_), y(y_) {}
+  Piece(int x, int y) : x(x), y(y) {}
   int x;
   int y;
 };
 
 struct Move {
+  Move() : piece(NULL), dir(Direction::END) {}
+  Move(Piece* const piece, Direction dir) : piece(piece), dir(dir) {}
+
   Piece* piece;
   Direction dir;
   string toString() const {
     static const char dirStr[4] = { 'N', 'S', 'E', 'W' };
     stringstream ss;
-    ss << piece->x << piece->y << dirStr[dir];
+    if (piece) {
+      ss << piece->x << piece->y << dirStr[dir];
+    }
     return ss.str();
   }
 };
@@ -64,8 +70,17 @@ class State {
     ~State() {
     }
 
-    vector<Move> getMoves(Player player) const {
+    vector<Move> getMoves(Player player) {
+      const int offset = player == Player::WHITE ? 0 : NUM_PIECES_PER_SIDE;
       vector<Move> v;
+      for (int i = 0; i < m_pieces.size(); ++i) {
+        Piece& piece = m_pieces[offset + i];
+        for (int dir = Direction::N; dir != Direction::END; ++dir) {
+          if (isValidMove(&piece, static_cast<Direction>(dir))) {
+            v.push_back(Move(&piece, static_cast<Direction>(dir)));
+          }
+        }
+      }
       return v;
     }
 
@@ -75,19 +90,29 @@ class State {
     }
 
     bool movePiece(Piece* const piece, const Direction dir) {
+      if (!piece || !isValidMove(piece, dir)) return false;
+      if (Direction::N == dir) {
+        piece->y -= 1;
+      } else if (Direction::S == dir) {
+        piece->y += 1;
+      } else if (Direction::E == dir) {
+        piece->x += 1;
+      } else if (Direction::W == dir) {
+        piece->x -= 1;
+      }
+      return true;
+    }
+
+    bool isValidMove(const Piece* const piece, const Direction dir) const {
       if (!piece) return false;
       if (Direction::N == dir) {
         if (piece->y == 1 || findPiece(piece->x, piece->y-1)) return false;
-        piece->y -= 1;
       } else if (Direction::S == dir) {
         if (piece->y == m_height || findPiece(piece->x, piece->y+1)) return false;
-        piece->y += 1;
       } else if (Direction::E == dir) {
         if (piece->x == m_width || findPiece(piece->x+1, piece->y)) return false;
-        piece->x += 1;
       } else if (Direction::W == dir) {
         if (piece->x == 0 || findPiece(piece->x-1, piece->y)) return false;
-        piece->x -= 1;
       }
       return true;
     }
@@ -135,11 +160,11 @@ class State {
   private:
     int getNumRuns(const Player player) const {
       const auto ps = getCombinations(NUM_PIECES_PER_SIDE, 2);
-      int offset = player == Player::WHITE ? 0 : NUM_PIECES_PER_SIDE;
+      const int offset = player == Player::WHITE ? 0 : NUM_PIECES_PER_SIDE;
       int numRuns = 0;
       for (const auto& p : ps) {
-        const auto& A = m_pieces[p.first];
-        const auto& B = m_pieces[p.second];
+        const auto& A = m_pieces[offset + p.first];
+        const auto& B = m_pieces[offset + p.second];
         if (isAdjacent(A.x, A.y, B.x, B.y)) {
           numRuns++;
         }
@@ -197,6 +222,15 @@ class State {
 
     Piece* findPiece(const int x, const int y) {
       for (auto& piece : m_pieces) {
+        if (piece.x == x && piece.y == y) {
+          return &piece;
+        }
+      }
+      return NULL;
+    }
+
+    const Piece* findPiece(const int x, const int y) const {
+      for (const auto& piece : m_pieces) {
         if (piece.x == x && piece.y == y) {
           return &piece;
         }
