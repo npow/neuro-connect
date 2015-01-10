@@ -1,4 +1,4 @@
-#include <climits>
+#include <limits>
 #include <stack>
 #include <unistd.h>
 #include <State.h>
@@ -25,16 +25,16 @@ static State popState() {
 static int evaluate(State& s, const Player player, const int maxDepth, const int alpha, const int beta) {
   const Player winner = s.getWinner();
   if (winner == player) {
-    return INT_MAX - getCurrDepth();
+    return numeric_limits<int>::max() - getCurrDepth();
   }
   else if (winner == OTHER(player)) {
-    return -(INT_MAX - getCurrDepth());
+    return -(numeric_limits<int>::max() - getCurrDepth());
   }
   else if (maxDepth == getCurrDepth()) {
     return s.getGoodness(player);
   }
   else {
-    int best = -(INT_MAX);
+    int best = -(numeric_limits<int>::max());
     int maxab = alpha;
     vector<Move> moves = s.getMoves(player);
     for (vector<Move>::iterator it = moves.begin(); it != moves.end(); ++it) {
@@ -64,7 +64,7 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   vector<Move> moves = s.getMoves(player);
   Move* bestMove = NULL;
   int goodness = 0;
-  int bestWorst = -INT_MAX;
+  int bestWorst = -numeric_limits<int>::max();
   for (vector<Move>::iterator it = moves.begin(); it != moves.end(); ++it) {
     pushState(s);
 
@@ -74,7 +74,7 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
       s = popState();
       break;
     } else {
-      goodness = evaluate(s, player, maxDepth, -INT_MAX, -bestWorst);
+      goodness = evaluate(s, player, maxDepth, -numeric_limits<int>::max(), -bestWorst);
       if (goodness > bestWorst) {
         bestWorst = goodness;
         bestMove = &*it;
@@ -95,7 +95,7 @@ int main(int argc, char* const argv[]) {
   bool isWhite = true;
   bool isSmallBoard = true;
   char c = '\0';
-  while ((c = getopt(argc, argv, "bl")) != -1) {
+  while ((c = getopt(argc, argv, "blh")) != -1) {
     switch (c) {
       case 'b':
         isWhite = false;
@@ -103,6 +103,11 @@ int main(int argc, char* const argv[]) {
       case 'l':
         isSmallBoard = false;
         break;
+      case 'h':
+        cout << "Usage: " << argv[0] << " [-b] [-l]" << endl
+             << "\t-b\tPlay as black. Default is white. " << endl
+             << "\t-l\tUse large board. Default is small board." << endl;
+        return 1;
     }
   }
   cout << "isWhite: " << isWhite << endl;
