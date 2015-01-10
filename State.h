@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <vector>
 #include <iostream>
+#include <sstream>
 using namespace std;
 
 #define NUM_PIECES_PER_SIDE 4
@@ -17,10 +18,10 @@ enum Direction {
   W = 3
 };
 
-enum Status {
-  IN_PROGRESS = 0,
-  WHITE_WON = 1,
-  BLACK_WON = 2
+enum Player {
+  NONE = 0,
+  WHITE = 1,
+  BLACK = 2
 };
 
 struct Piece {
@@ -28,6 +29,17 @@ struct Piece {
   Piece(int x_, int y_) : x(x_), y(y_) {}
   int x;
   int y;
+};
+
+struct Move {
+  Piece* piece;
+  Direction dir;
+  string toString() const {
+    static const char dirStr[4] = { 'N', 'S', 'E', 'W' };
+    stringstream ss;
+    ss << piece->x << piece->y << dirStr[dir];
+    return ss.str();
+  }
 };
 
 class State {
@@ -49,39 +61,48 @@ class State {
     ~State() {
     }
 
+    vector<Move> getMoves(Player player) const {
+      vector<Move> v;
+      return v;
+    }
+
     bool move(const int x, const int y, const Direction dir) {
       if (x < 1 || x > m_width || y < 1 || y > m_height) return false;
       return movePiece(findPiece(x, y), dir);
     }
 
-    Status getStatus() const {
-      if (hasWhiteWon()) return Status::WHITE_WON;
-      else if (hasBlackWon()) return Status::BLACK_WON;
-      else return Status::IN_PROGRESS;
+    bool movePiece(Piece* piece, const Direction dir) {
+      if (!piece) return false;
+      if (Direction::N == dir) {
+        if (piece->y == 1 || findPiece(piece->x, piece->y-1)) return false;
+        piece->y -= 1;
+      } else if (Direction::S == dir) {
+        if (piece->y == m_height || findPiece(piece->x, piece->y+1)) return false;
+        piece->y += 1;
+      } else if (Direction::E == dir) {
+        if (piece->x == m_width || findPiece(piece->x+1, piece->y)) return false;
+        piece->x += 1;
+      } else if (Direction::W == dir) {
+        if (piece->x == 0 || findPiece(piece->x-1, piece->y)) return false;
+        piece->x -= 1;
+      }
+      return true;
+    }
+
+    Player getWinner() const {
+      if (hasWhiteWon()) return Player::WHITE;
+      else if (hasBlackWon()) return Player::BLACK;
+      else return Player::NONE;
     }
 
     bool hasWhiteWon() const {
       vector<Piece> pieces(m_pieces.begin(), m_pieces.begin()+NUM_PIECES_PER_SIDE);
-      for (int i = 0; i < NUM_PIECES_PER_SIDE; ++i) {
-        vector<Piece> tmp = pieces; // copy
-        tmp.erase(tmp.begin() + i);
-        if (isConnected(tmp)) {
-          return true;
-        }
-      }
-      return false;
+      return hasPlayerWon(pieces);
     }
 
     bool hasBlackWon() const {
       vector<Piece> pieces(m_pieces.begin()+NUM_PIECES_PER_SIDE, m_pieces.end());
-      for (int i = 0; i < NUM_PIECES_PER_SIDE; ++i) {
-        vector<Piece> tmp = pieces; // copy
-        tmp.erase(tmp.begin() + i);
-        if (isConnected(tmp)) {
-          return true;
-        }
-      }
-      return false;
+      return hasPlayerWon(pieces);
     }
 
     void print() const {
@@ -104,7 +125,22 @@ class State {
       }
     }
 
+    int getGoodness(Player player) const {
+      return 0;
+    }
+
   private:
+    bool hasPlayerWon(const vector<Piece>& pieces) const {
+      for (int i = 0; i < NUM_PIECES_PER_SIDE; ++i) {
+        vector<Piece> tmp = pieces; // copy
+        tmp.erase(tmp.begin() + i);
+        if (isConnected(tmp)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     bool isConnected(const vector<Piece>& pieces) const {
       const Piece& A = pieces[0];
       const Piece& B = pieces[1];
@@ -124,24 +160,6 @@ class State {
         }
       }
       return NULL;
-    }
-
-    bool movePiece(Piece* piece, const Direction dir) {
-      if (!piece) return false;
-      if (Direction::N == dir) {
-        if (piece->y == 1 || findPiece(piece->x, piece->y-1)) return false;
-        piece->y -= 1;
-      } else if (Direction::S == dir) {
-        if (piece->y == m_height || findPiece(piece->x, piece->y+1)) return false;
-        piece->y += 1;
-      } else if (Direction::E == dir) {
-        if (piece->x == m_width || findPiece(piece->x+1, piece->y)) return false;
-        piece->x += 1;
-      } else if (Direction::W == dir) {
-        if (piece->x == 0 || findPiece(piece->x-1, piece->y)) return false;
-        piece->x -= 1;
-      }
-      return true;
     }
 
   private:
