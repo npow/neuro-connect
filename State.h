@@ -316,9 +316,10 @@ class State {
     }
 
     bool isConnected(const Piece& A, const Piece& B, const Piece& C) const {
-      return isAdjacent(A.x, A.y, B.x, B.y) &&
-             isAdjacent(B.x, B.y, C.x, C.y) &&
-             isCollinear(A.x, A.y, B.x, B.y, C.x, C.y);
+      return isCollinear(A.x, A.y, B.x, B.y, C.x, C.y) &&
+             ((isAdjacent(A.x, A.y, B.x, B.y) && isAdjacent(B.x, B.y, C.x, C.y)) ||
+              (isAdjacent(A.x, A.y, C.x, C.y) && isAdjacent(C.x, C.y, B.x, B.y)) ||
+              (isAdjacent(B.x, B.y, A.x, A.y) && isAdjacent(A.x, A.y, C.x, C.y)));
     }
 
     bool isCollinear(int x1, int y1, int x2, int y2, int x3, int y3) const {
