@@ -3,6 +3,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <State.h>
 using namespace std;
@@ -119,9 +120,9 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   return "";
 }
 
-static void dumpStateMap(const int width, const int height, const map<string, int>& stateMap) {
+static void dumpStateMap(const int width, const int height, const map<string, int>& stateMap, const string& fileName) {
   stringstream ss;
-  ss << "stateMap_" << width << "_" << height << ".txt";
+  ss << "stateMap_" << fileName;
 
   ofstream out(ss.str());
   for (const auto& p : stateMap) {
@@ -147,10 +148,19 @@ static map<string, int> loadStateMap(const int width, const int height) {
   return stateMap;
 }
 
-static void populateStates(const int width, const int height) {
-  stringstream ss;
-  ss << "states_" << width << "_" << height << ".txt";
-  ifstream in(ss.str());
+inline bool fileExists(const std::string& name) {
+  struct stat buffer;
+  return (stat(name.c_str(), &buffer) == 0);
+}
+
+static void populateStates(const int width, const int height, const std::string& fileName) {
+  cout << fileName << endl;
+  if (!fileExists(fileName)) {
+    cout << "File not found: " << fileName << endl;
+    return;
+  }
+
+  ifstream in(fileName.c_str());
   string line;
   vector<State> states;
   states.reserve(8817900);
@@ -161,18 +171,12 @@ static void populateStates(const int width, const int height) {
   }
   in.close();
 
-  int cnt = 0;
   map<string, int> stateMap;
   for (auto& s : states) {
     stateMap[s.toString()] = evaluate(s, Player::WHITE, MAX_DEPTH, -numeric_limits<int>::max(), numeric_limits<int>::max());
-
-    cnt++;
-    if (cnt > 10) {
-      break;
-    }
   }
 
-  dumpStateMap(width, height, stateMap);
+  dumpStateMap(width, height, stateMap, fileName);
 }
 
 static void generateStates(const int width, const int height) {
@@ -227,8 +231,9 @@ int main(int argc, char* const argv[]) {
   bool isSmallBoard = true;
   bool isGenMode = false;
   bool isPopMode = false;
+  string stateMapFileName;
   char c = '\0';
-  while ((c = getopt(argc, argv, "abglhp")) != -1) {
+  while ((c = getopt(argc, argv, "abglhp:")) != -1) {
     switch (c) {
       case 'a':
         isAuto = true;
@@ -251,6 +256,7 @@ int main(int argc, char* const argv[]) {
         return 1;
       case 'p':
         isPopMode = true;
+        stateMapFileName = optarg;
         break;
     }
   }
@@ -268,7 +274,7 @@ int main(int argc, char* const argv[]) {
     generateStates(width, height);
     return 0;
   } else if (isPopMode) {
-    populateStates(width, height);
+    populateStates(width, height, stateMapFileName);
     return 0;
   }
 
