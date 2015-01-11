@@ -45,6 +45,8 @@ static int evaluate(State& s, const Player player, const int maxDepth, const int
   }
   else if (s.hasPlayerWon(OTHER(player))) {
     return -(numeric_limits<int>::max() - getCurrDepth());
+  } else if (isDraw(s)) {
+    return 0;
   }
   else if (maxDepth == getCurrDepth()) {
     return s.getGoodness(player);
@@ -98,7 +100,7 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
         bestWorst = goodness;
         bestMove = make_shared<Move>(move);
       } else if (goodness == bestWorst) {
-        if (rand() % 2 == 0) {
+        if (find(history.begin(), history.end(), s) == history.end() || rand() % 2 == 0) {
           bestMove = make_shared<Move>(move);
         }
       }
