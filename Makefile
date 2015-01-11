@@ -2,7 +2,14 @@
 
 all: main
 
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
+CXX=g++-4.7
+else
 CXX=g++-4.9
+endif
+
 CXX_FLAGS=-I. -std=c++11 -MMD -O3
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)
