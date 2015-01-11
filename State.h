@@ -116,7 +116,7 @@ struct Move {
   string toString() const {
     static const char dirStr[4] = { 'N', 'S', 'E', 'W' };
     stringstream ss;
-    if (x && y) {
+    if (x != 0 && y != 0 && dir != Direction::END) {
       ss << x << y << dirStr[dir];
     }
     return ss.str();

@@ -1,4 +1,5 @@
 #include <cassert>
+#include <fstream>
 #include <limits>
 #include <map>
 #include <memory>
@@ -118,20 +119,77 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   return "";
 }
 
-static void generateTrainData(const int width, const int height) {
+static void dumpStateMap(const int width, const int height, const map<string, int>& stateMap) {
+  stringstream ss;
+  ss << "stateMap_" << width << "_" << height << ".txt";
+
+  ofstream out(ss.str());
+  for (const auto& p : stateMap) {
+    out << p.first << " " << p.second << endl;
+  }
+  out.close();
+}
+
+static map<string, int> loadStateMap(const int width, const int height) {
+  stringstream ss;
+  ss << "stateMap_" << width << "_" << height << ".txt";
+
+  map<string, int> stateMap;
+  ifstream in(ss.str());
+  while (!in.eof()) {
+    string stateStr;
+    int goodness;
+    in >> stateStr >> goodness;
+    stateMap[stateStr] = goodness;
+  }
+  in.close();
+
+  return stateMap;
+}
+
+static void populateStates(const int width, const int height) {
+  stringstream ss;
+  ss << "states_" << width << "_" << height << ".txt";
+  ifstream in(ss.str());
+  string line;
+  vector<State> states;
+  states.reserve(8817900);
+  while (in >> line) {
+    State s(width, height);
+    s.fromString(line);
+    states.push_back(s);
+  }
+  in.close();
+
+  int cnt = 0;
+  map<string, int> stateMap;
+  for (auto& s : states) {
+    stateMap[s.toString()] = evaluate(s, Player::WHITE, MAX_DEPTH, -numeric_limits<int>::max(), numeric_limits<int>::max());
+
+    cnt++;
+    if (cnt > 10) {
+      break;
+    }
+  }
+
+  dumpStateMap(width, height, stateMap);
+}
+
+static void generateStates(const int width, const int height) {
   const int n = width * height;
   const int r = 8;
   vector<bool> v(n);
   fill(v.begin() + n - r, v.end(), true);
 
-  map<string, int> stateMap;
+  vector<string> states;
+  states.reserve(8817900);
   do {
     vector<Piece> pieces;
     pieces.reserve(r);
     for (int i = 0; i < n; ++i) {
       if (v[i]) {
-        const int x = i % width;
-        const int y = i / width;
+        const int x = (i % width) + 1;
+        const int y = (i / width) + 1;
         pieces.push_back(Piece(x, y));
       }
     }
@@ -151,10 +209,16 @@ static void generateTrainData(const int width, const int height) {
 
       State s(width, height);
       s.setPieces(whitePieces, blackPieces);
-      stateMap[s.toString()] = -numeric_limits<int>::max();
+      states.push_back(s.toString());
     }
   } while (next_permutation(v.begin(), v.end()));
-  cout << stateMap.size() << endl;
+  stringstream ss;
+  ss << "states_" << width << "_" << height << ".txt";
+  ofstream out(ss.str());
+  for (const auto& s : states) {
+    out << s << endl;
+  }
+  out.close();
 }
 
 int main(int argc, char* const argv[]) {
@@ -162,8 +226,9 @@ int main(int argc, char* const argv[]) {
   bool isWhite = true;
   bool isSmallBoard = true;
   bool isGenMode = false;
+  bool isPopMode = false;
   char c = '\0';
-  while ((c = getopt(argc, argv, "abglh")) != -1) {
+  while ((c = getopt(argc, argv, "abglhp")) != -1) {
     switch (c) {
       case 'a':
         isAuto = true;
@@ -184,6 +249,9 @@ int main(int argc, char* const argv[]) {
              << "\t-l\tUse large board. Default is small board." << endl
              << "\t-h\tDisplay this help message." << endl;
         return 1;
+      case 'p':
+        isPopMode = true;
+        break;
     }
   }
   cout << "isWhite: " << isWhite << endl;
@@ -197,7 +265,10 @@ int main(int argc, char* const argv[]) {
   }
 
   if (isGenMode) {
-    generateTrainData(width, height);
+    generateStates(width, height);
+    return 0;
+  } else if (isPopMode) {
+    populateStates(width, height);
     return 0;
   }
 
