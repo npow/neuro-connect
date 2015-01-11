@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
+#include <ctime>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -13,6 +14,20 @@ using namespace std;
 #define WHITE_CHAR '0'
 #define BLACK_CHAR '1'
 #define OTHER(player) ((player) == Player::WHITE ? Player::BLACK : Player::WHITE)
+
+class Timer {
+  public:
+    Timer() {
+      m_start = clock();
+    }
+    ~Timer() {
+      double duration = (clock() - m_start) / (double)CLOCKS_PER_SEC;
+      cout << "Took: " << duration << "s" << endl;
+    }
+
+  private:
+    clock_t m_start;
+};
 
 enum Direction {
   N = 0,
@@ -30,7 +45,17 @@ enum Player {
 
 struct Piece {
   Piece() : x(0), y(0) {}
+
   Piece(int x, int y) : x(x), y(y) {}
+
+  bool operator==(const Piece& rhs) const {
+    return x == rhs.x && y == rhs.y;
+  }
+
+  bool operator!=(const Piece& rhs) const {
+    return !(this->operator==(rhs));
+  }
+
   int x;
   int y;
 };
@@ -71,6 +96,15 @@ class State {
     ~State() {
     }
 
+    bool operator==(const State& rhs) const {
+      return isEqual(getPieces(Player::WHITE), rhs.getPieces(Player::WHITE)) &&
+             isEqual(getPieces(Player::BLACK), rhs.getPieces(Player::BLACK));
+    }
+
+    bool operator!=(const State& rhs) const {
+      return !(this->operator==(rhs));
+    }
+
     vector<Piece>& getPieces(const Player player) {
       return m_pieces[static_cast<int>(player)];
     }
@@ -81,6 +115,7 @@ class State {
 
     vector<Move> getMoves(const Player player) const {
       vector<Move> v;
+      v.reserve(8);
       for (auto& piece : getPieces(player)) {
         for (int dir = Direction::N; dir != Direction::END; ++dir) {
           if (isValidMove(&piece, static_cast<Direction>(dir))) {
@@ -91,13 +126,13 @@ class State {
       return v;
     }
 
-    bool move(const int x, const int y, const Direction dir) {
+    bool move(const int x, const int y, const Direction dir, bool skipVerification = false) {
       if (x < 1 || x > m_width || y < 1 || y > m_height) return false;
-      return movePiece(findPiece(x, y), dir);
+      return movePiece(findPiece(x, y), dir, skipVerification);
     }
 
-    bool movePiece(Piece* const piece, const Direction dir) {
-      if (!piece || !isValidMove(piece, dir)) return false;
+    bool movePiece(Piece* const piece, const Direction dir, bool skipVerification) {
+      if (!piece || (!skipVerification && !isValidMove(piece, dir))) return false;
       if (Direction::N == dir) {
         piece->y -= 1;
       } else if (Direction::S == dir) {
@@ -130,6 +165,10 @@ class State {
       else return Player::NONE;
     }
 
+    inline bool hasPlayerWon(const Player player) const {
+      return hasPlayerWon(getPieces(player));
+    }
+
     void print() const {
       cout << "==========" << endl;
       char grid[m_height][m_width];
@@ -159,12 +198,12 @@ class State {
 
   private:
     int getNumRuns(const Player player) const {
-      const auto ps = getCombinations(NUM_PIECES_PER_SIDE, 2);
+      const auto& ps = getCombinations_4_2();
       const vector<Piece>& pieces = getPieces(player);
       int numRuns = 0;
       for (const auto& p : ps) {
-        const auto& A = pieces[p.first];
-        const auto& B = pieces[p.second];
+        const auto& A = pieces[p[0]];
+        const auto& B = pieces[p[1]];
         if (isAdjacent(A.x, A.y, B.x, B.y)) {
           numRuns++;
         }
@@ -173,23 +212,19 @@ class State {
     }
 
     bool hasPlayerWon(const vector<Piece>& pieces) const {
-      for (int i = 0; i < pieces.size(); ++i) {
-        vector<Piece> tmp = pieces; // copy
-        tmp.erase(tmp.begin() + i);
-        if (isConnected(tmp)) {
+      const auto& ps = getCombinations_4_3();
+      for (const auto& p : ps) {
+        if (isConnected(pieces[p[0]], pieces[p[1]], pieces[p[2]])) {
           return true;
         }
       }
       return false;
     }
 
-    bool isConnected(const vector<Piece>& pieces) const {
-      const Piece& A = pieces[0];
-      const Piece& B = pieces[1];
-      const Piece& C = pieces[2];
-      return isCollinear(A.x, A.y, B.x, B.y, C.x, C.y) &&
-             isAdjacent(A.x, A.y, B.x, B.y) &&
-             isAdjacent(B.x, B.y, C.x, C.y);
+    bool isConnected(const Piece& A, const Piece& B, const Piece& C) const {
+      return isAdjacent(A.x, A.y, B.x, B.y) &&
+             isAdjacent(B.x, B.y, C.x, C.y) &&
+             isCollinear(A.x, A.y, B.x, B.y, C.x, C.y);
     }
 
     bool isCollinear(int x1, int y1, int x2, int y2, int x3, int y3) const {
@@ -203,23 +238,40 @@ class State {
       return (dx + dy == 1) || (dx == 1 && dy == 1);
     }
 
-    vector< pair<int, int> > getCombinations(const int n, const int r) const {
-      vector< pair<int, int> > res;
+    vector< vector<int> > getCombinations(const int n, const int r) const {
+      vector< vector<int> > res;
 
       vector<bool> v(n);
       fill(v.begin() + n - r, v.end(), true);
 
       do {
-        pair<int, int> p(-1, -1);
+        vector<int> p;
+        p.reserve(r);
         for (int i = 0; i < n; ++i) {
           if (v[i]) {
-            (p.first == -1 ? p.first : p.second) = i;
+            p.push_back(i);
           }
         }
         res.push_back(p);
       } while (next_permutation(v.begin(), v.end()));
 
       return res;
+    }
+
+    const vector< vector<int> >& getCombinations_4_3() const {
+      static vector< vector<int> > v;
+      if (v.empty()) {
+        v = getCombinations(NUM_PIECES_PER_SIDE, 3);
+      }
+      return v;
+    }
+
+    const vector< vector<int> >& getCombinations_4_2() const {
+      static vector< vector<int> > v;
+      if (v.empty()) {
+        v = getCombinations(NUM_PIECES_PER_SIDE, 2);
+      }
+      return v;
     }
 
     Piece* findPiece(const int x, const int y) {
@@ -238,6 +290,16 @@ class State {
         }
       }
       return nullptr;
+    }
+
+    inline bool isEqual(const vector<Piece>& v1, const vector<Piece>& v2) const {
+      if (v1.size() != v2.size()) return false;
+      for (const auto& piece : v1) {
+        if (find(v2.begin(), v2.end(), piece) == v2.end()) {
+          return false;
+        }
+      }
+      return true;
     }
 
   private:

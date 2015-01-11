@@ -1,7 +1,7 @@
 #include <cassert>
 #include <limits>
 #include <memory>
-#include <stack>
+#include <deque>
 #include <unistd.h>
 #include <State.h>
 using namespace std;
@@ -9,28 +9,41 @@ using namespace std;
 #define USE_AB_PRUNING 1
 #define MAX_DEPTH 8
 
-static stack<State> history;
+static deque<State> history;
 static int getCurrDepth() {
   return history.size();
 }
 
 static void pushState(const State& s) {
-  history.push(s);
+  history.push_back(s);
 }
 
-// FIXME: check whether we need to return the state or not
 static State popState() {
-  State s = history.top();
-  history.pop();
+  State s = history.back();
+  history.pop_back();
   return s;
 }
 
+static bool isDraw(const State& s) {
+  int i = 0;
+  int numRepeat[2] = { 0, 0 };
+  for (const auto& state : history) {
+    if (s == state) {
+      numRepeat[i % 2]++;
+      if (numRepeat[0] == 3 || numRepeat[1] == 3) {
+        return true;
+      }
+    }
+    i++;
+  }
+  return false;
+}
+
 static int evaluate(State& s, const Player player, const int maxDepth, const int alpha, const int beta) {
-  const Player winner = s.getWinner();
-  if (winner == player) {
+  if (s.hasPlayerWon(player)) {
     return numeric_limits<int>::max() - getCurrDepth();
   }
-  else if (winner == OTHER(player)) {
+  else if (s.hasPlayerWon(OTHER(player))) {
     return -(numeric_limits<int>::max() - getCurrDepth());
   }
   else if (maxDepth == getCurrDepth()) {
@@ -44,7 +57,7 @@ static int evaluate(State& s, const Player player, const int maxDepth, const int
     for (auto& move : moves) {
       pushState(s);
 
-      assert(s.move(move.x, move.y, move.dir));
+      assert(s.move(move.x, move.y, move.dir, true));
       int goodness = evaluate(s, OTHER(player), maxDepth, -beta, -maxab);
       if (goodness > best) {
         best = goodness;
@@ -74,8 +87,8 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   for (auto& move : moves) {
     pushState(s);
 
-    assert(s.move(move.x, move.y, move.dir));
-    if (s.getWinner() == player) {
+    assert(s.move(move.x, move.y, move.dir, true));
+    if (s.hasPlayerWon(player)) {
       bestMove = make_shared<Move>(move);
       s = popState();
       break;
@@ -95,7 +108,7 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   }
 
   if (bestMove) {
-    s.move(bestMove->x, bestMove->y, bestMove->dir);
+    s.move(bestMove->x, bestMove->y, bestMove->dir, true);
     return bestMove->toString();
   }
   return "";
@@ -140,6 +153,7 @@ int main(int argc, char* const argv[]) {
   Player currTurn = Player::WHITE; // white starts
   const Player player = isWhite ? Player::WHITE : Player::BLACK;
   while (s.getWinner() == Player::NONE) {
+    Timer t;
     if (currTurn == player) {
       string res = makeMove(s, currTurn, MAX_DEPTH);
       cout << res << endl;
@@ -154,6 +168,10 @@ int main(int argc, char* const argv[]) {
       }
     }
     s.print();
+    if (isDraw(s)) {
+      cout << "Draw by 3-fold repetition" << endl;
+      break;
+    }
     currTurn = OTHER(currTurn);
   }
   return 0;
