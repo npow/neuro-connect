@@ -279,7 +279,7 @@ int main(int argc, char* const argv[]) {
   bool isSmallBoard = true;
   bool isGenMode = false;
   bool isPopMode = false;
-  int maxDepth = 8;
+  int maxDepth = 10;
   string stateMapFileName;
   char c = '\0';
   while ((c = getopt(argc, argv, "abd:glhp:")) != -1) {
