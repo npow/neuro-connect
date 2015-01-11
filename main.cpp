@@ -1,7 +1,6 @@
 #include <cassert>
 #include <limits>
 #include <memory>
-#include <deque>
 #include <unistd.h>
 #include <State.h>
 using namespace std;
@@ -9,9 +8,10 @@ using namespace std;
 #define USE_AB_PRUNING 1
 #define MAX_DEPTH 8
 
-static deque<State> history;
+static vector<State> history;
+static int numTurns = 0;
 static int getCurrDepth() {
-  return history.size();
+  return history.size() - numTurns;
 }
 
 static void pushState(const State& s) {
@@ -110,6 +110,7 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   }
 
   if (bestMove) {
+    cout << "bestWorst: " << bestWorst << endl;
     s.move(bestMove->x, bestMove->y, bestMove->dir, true);
     return bestMove->toString();
   }
@@ -155,6 +156,8 @@ int main(int argc, char* const argv[]) {
   Player currTurn = Player::WHITE; // white starts
   const Player player = isWhite ? Player::WHITE : Player::BLACK;
   while (s.getWinner() == Player::NONE) {
+    cout << endl << endl << "numTurns: " << numTurns << endl;
+    history.push_back(s);
     Timer t;
     if (currTurn == player) {
       string res = makeMove(s, currTurn, MAX_DEPTH);
@@ -175,6 +178,7 @@ int main(int argc, char* const argv[]) {
       break;
     }
     currTurn = OTHER(currTurn);
+    numTurns++;
   }
   return 0;
 }
