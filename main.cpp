@@ -122,7 +122,7 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
 
 static void dumpStateMap(const int width, const int height, const map<string, int>& stateMap, const string& fileName) {
   stringstream ss;
-  ss << "output/stateMap_" << fileName;
+  ss << fileName << "_statemap";
 
   ofstream out(ss.str());
   for (const auto& p : stateMap) {
