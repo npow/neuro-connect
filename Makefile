@@ -17,4 +17,4 @@ main: $(OBJS)
 	$(CXX) $(CXX_FLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o main
+	rm -f *.o *.d main
