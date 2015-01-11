@@ -316,10 +316,15 @@ class State {
     }
 
     bool isConnected(const Piece& A, const Piece& B, const Piece& C) const {
-      return isCollinear(A.x, A.y, B.x, B.y, C.x, C.y) &&
-             ((isAdjacent(A.x, A.y, B.x, B.y) && isAdjacent(B.x, B.y, C.x, C.y)) ||
-              (isAdjacent(A.x, A.y, C.x, C.y) && isAdjacent(C.x, C.y, B.x, B.y)) ||
-              (isAdjacent(B.x, B.y, A.x, A.y) && isAdjacent(A.x, A.y, C.x, C.y)));
+      if (!isCollinear(A.x, A.y, B.x, B.y, C.x, C.y)) {
+        return false;
+      }
+      return (isAdjacent(A.x, A.y, B.x, B.y) && isAdjacent(B.x, B.y, C.x, C.y)) ||
+             (isAdjacent(A.x, A.y, C.x, C.y) && isAdjacent(C.x, C.y, B.x, B.y)) ||
+             (isAdjacent(C.x, C.y, A.x, A.y) && isAdjacent(A.x, A.y, B.x, B.y)) ||
+             (isDiagonallyAdjacent(A.x, A.y, B.x, B.y) && isDiagonallyAdjacent(B.x, B.y, C.x, C.y)) ||
+             (isDiagonallyAdjacent(A.x, A.y, C.x, C.y) && isDiagonallyAdjacent(C.x, C.y, B.x, B.y)) ||
+             (isDiagonallyAdjacent(C.x, C.y, A.x, A.y) && isDiagonallyAdjacent(A.x, A.y, B.x, B.y));
     }
 
     bool isCollinear(int x1, int y1, int x2, int y2, int x3, int y3) const {
@@ -329,8 +334,13 @@ class State {
     bool isAdjacent(const int x1, const int y1, const int x2, const int y2) const {
       const int dx = abs(x1 - x2);
       const int dy = abs(y1 - y2);
-      const int dist = dx + dy;
-      return (dx + dy == 1) || (dx == 1 && dy == 1);
+      return dx + dy == 1;
+    }
+
+    bool isDiagonallyAdjacent(const int x1, const int y1, const int x2, const int y2) const {
+      const int dx = abs(x1 - x2);
+      const int dy = abs(y1 - y2);
+      return dx == 1 && dy == 1;
     }
 
     Piece* findPiece(const int x, const int y) {

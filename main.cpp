@@ -9,11 +9,10 @@
 using namespace std;
 
 #define USE_AB_PRUNING 1
-#define MAX_DEPTH 10
 
 class Game {
   public:
-    Game(const int width, const int height) : currTurn(Player::WHITE), currState(State(width, height)) {
+    Game(const int width, const int height, const int maxDepth) : numTurns(0), maxDepth(maxDepth), currTurn(Player::WHITE), currState(State(width, height)) {
     }
 
     bool move(const std::string& move, bool skipValidation = false) {
@@ -37,6 +36,7 @@ class Game {
         numTurns++;
         currTurn = OTHER(currTurn);
         currState.print();
+        history.push_back(currState);
       }
       return retval;
     }
@@ -87,10 +87,11 @@ class Game {
         assert(currState.move(move.x, move.y, move.dir, true));
         if (currState.hasPlayerWon(currTurn)) {
           bestMove = make_shared<Move>(move);
+          bestWorst = numeric_limits<int>::max();
           currState = popState();
           break;
         } else {
-          goodness = evaluate(currState, currTurn, MAX_DEPTH, -numeric_limits<int>::max(), -bestWorst);
+          goodness = evaluate(currState, currTurn, 0, -numeric_limits<int>::max(), -bestWorst);
           if (goodness > bestWorst) {
             bestWorst = goodness;
             bestMove = make_shared<Move>(move);
@@ -103,20 +104,21 @@ class Game {
 
         currState = popState();
       }
+      cout << "bestWorst: " << bestWorst << endl;
 
       return bestMove;
     }
 
-    int evaluate(State& s, const Player player, const int maxDepth, int alpha, const int beta) {
+    int evaluate(State& s, const Player player, const int currDepth, int alpha, const int beta) {
       if (s.hasPlayerWon(player)) {
-        return numeric_limits<int>::max() - getCurrDepth();
+        return numeric_limits<int>::max() - currDepth;
       }
       else if (s.hasPlayerWon(OTHER(player))) {
-        return -(numeric_limits<int>::max() - getCurrDepth());
+        return -(numeric_limits<int>::max() - currDepth);
       } else if (checkIsGameDrawn(s)) {
         return 0;
-      } else if (getCurrDepth() == maxDepth) {
-        return Player::WHITE == player ? -100000 : 100000;
+      } else if (currDepth == maxDepth) {
+        return s.getGoodness(player);
       }
       else {
         // now it's the other player's turn
@@ -126,7 +128,7 @@ class Game {
           pushState(s);
 
           assert(s.move(move.x, move.y, move.dir, true));
-          int val = evaluate(s, OTHER(player), maxDepth, -beta, -alpha);
+          int val = evaluate(s, OTHER(player), currDepth+1, -beta, -alpha);
           bestVal = max(bestVal, val);
           alpha = max(alpha, val);
 
@@ -144,10 +146,6 @@ class Game {
     }
 
   private:
-    int getCurrDepth() const {
-      return history.size() - numTurns;
-    }
-
     void pushState(const State& s) {
       history.push_back(s);
     }
@@ -159,10 +157,11 @@ class Game {
     }
 
   private:
+    int numTurns;
+    int maxDepth;
     Player currTurn;
     State currState;
     vector<State> history;
-    int numTurns = 0;
 };
 
 static void dumpStateMap(const int width, const int height, const map<string, int>& stateMap, const string& fileName) {
@@ -200,7 +199,7 @@ inline bool fileExists(const std::string& name) {
   return (stat(name.c_str(), &buffer) == 0);
 }
 
-static void populateStates(const int width, const int height, const std::string& fileName) {
+static void populateStates(const int width, const int height, const int maxDepth, const std::string& fileName) {
   cout << fileName << endl;
   if (!fileExists(fileName)) {
     cout << "File not found: " << fileName << endl;
@@ -220,9 +219,9 @@ static void populateStates(const int width, const int height, const std::string&
 
   map<string, int> stateMap;
   for (auto& s : states) {
-    Game game(width, height);
+    Game game(width, height, maxDepth);
     game.setCurrState(s);
-    stateMap[s.toString(Player::WHITE)] = game.evaluate(s, Player::WHITE, MAX_DEPTH, -numeric_limits<int>::max(), numeric_limits<int>::max());
+    stateMap[s.toString(Player::WHITE)] = game.evaluate(s, Player::WHITE, 0, -numeric_limits<int>::max(), numeric_limits<int>::max());
   }
 
   dumpStateMap(width, height, stateMap, fileName);
@@ -280,15 +279,19 @@ int main(int argc, char* const argv[]) {
   bool isSmallBoard = true;
   bool isGenMode = false;
   bool isPopMode = false;
+  int maxDepth = 8;
   string stateMapFileName;
   char c = '\0';
-  while ((c = getopt(argc, argv, "abglhp:")) != -1) {
+  while ((c = getopt(argc, argv, "abd:glhp:")) != -1) {
     switch (c) {
       case 'a':
         isAuto = true;
         break;
       case 'b':
         isWhite = false;
+        break;
+      case 'd':
+        maxDepth = atoi(optarg);
         break;
       case 'g':
         isGenMode = true;
@@ -311,6 +314,7 @@ int main(int argc, char* const argv[]) {
   }
   cout << "isWhite: " << isWhite << endl;
   cout << "isSmallBoard: " << isSmallBoard << endl;
+  cout << "maxDepth: " << maxDepth << endl;
 
   int width = 5;
   int height = 4;
@@ -323,14 +327,14 @@ int main(int argc, char* const argv[]) {
     generateStates(width, height);
     return 0;
   } else if (isPopMode) {
-    populateStates(width, height, stateMapFileName);
+    populateStates(width, height, maxDepth, stateMapFileName);
     return 0;
   }
 
-  Game game(width, height);
+  Game game(width, height, maxDepth);
   const Player player = isWhite ? Player::WHITE : Player::BLACK;
   while (game.getWinner() == Player::NONE) {
-    cout << endl << endl << "turn #: " << game.getNumTurns() << endl;
+    cout << endl << endl << "turn#: " << game.getNumTurns() << (game.getCurrTurn() == Player::WHITE ? " (W)" : " (B)") << endl;
     Timer t;
     if (game.getCurrTurn() == player) {
       shared_ptr<Move> bestMove = game.getBestMove();
