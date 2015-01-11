@@ -102,6 +102,19 @@ struct Piece {
     return !(this->operator==(rhs));
   }
 
+  bool operator<(const Piece& rhs) const {
+    if (x < rhs.x) {
+      return true;
+    } else if (x == rhs.x) {
+      if (y < rhs.y) {
+        return true;
+      }
+    } else {
+      return y < rhs.y;
+    }
+    return false;
+  }
+
   int x;
   int y;
 };
@@ -247,12 +260,16 @@ class State {
       return getNumRuns(player) - getNumRuns(OTHER(player));
     }
 
-    string toString() const {
+    string toString(const Player player) {
       stringstream ss;
-      for (const auto& p : getPieces(Player::WHITE)) {
+      auto p1 = getPieces(player); // copy
+      sort(p1.begin(), p1.end());
+      for (const auto& p : p1) {
         ss << p.x << p.y;
       }
-      for (const auto& p : getPieces(Player::BLACK)) {
+      auto p2 = getPieces(OTHER(player)); // copy
+      sort(p2.begin(), p2.end());
+      for (const auto& p : p2) {
         ss << p.x << p.y;
       }
       return ss.str();

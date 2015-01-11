@@ -9,116 +9,190 @@
 using namespace std;
 
 #define USE_AB_PRUNING 1
-#define MAX_DEPTH 8
+#define MAX_DEPTH 100
 
-static vector<State> history;
-static int numTurns = 0;
-static int getCurrDepth() {
-  return history.size() - numTurns;
-}
-
-static void pushState(const State& s) {
-  history.push_back(s);
-}
-
-static State popState() {
-  State s = history.back();
-  history.pop_back();
-  return s;
-}
-
-static bool isDraw(const State& s) {
-  int i = 0;
-  int numRepeat[2] = { 0, 0 };
-  for (const auto& state : history) {
-    if (s == state) {
-      numRepeat[i % 2]++;
-      if (numRepeat[0] == 3 || numRepeat[1] == 3) {
-        return true;
-      }
+class Game {
+  public:
+    Game(const int width, const int height) : currTurn(Player::WHITE), currState(State(width, height)) {
     }
-    i++;
-  }
-  return false;
-}
 
-static int evaluate(State& s, const Player player, const int maxDepth, const int alpha, const int beta) {
-  if (s.hasPlayerWon(player)) {
-    return numeric_limits<int>::max() - getCurrDepth();
-  }
-  else if (s.hasPlayerWon(OTHER(player))) {
-    return -(numeric_limits<int>::max() - getCurrDepth());
-  } else if (isDraw(s)) {
-    return 0;
-  }
-  else if (maxDepth == getCurrDepth()) {
-    return s.getGoodness(player);
-  }
-  else {
-    // now it's the other player's turn
-    int best = -numeric_limits<int>::max();
-    int maxab = alpha;
-    vector<Move> moves = s.getMoves(OTHER(player));
-    for (auto& move : moves) {
-      pushState(s);
+    bool move(const std::string& move, bool skipValidation = false) {
+      if (move.length() != 3) {
+        return false;
+      }
+      const int x = toInt(move[0]);
+      const int y = toInt(move[1]);
+      Direction dir = Direction::END;
+      switch (move[2]) {
+        case 'N': dir = Direction::N; break;
+        case 'S': dir = Direction::S; break;
+        case 'E': dir = Direction::E; break;
+        case 'W': dir = Direction::W; break;
+      }
+      if (dir == Direction::END) {
+        return false;
+      }
+      bool retval = currState.move(x, y, dir, false);
+      if (retval) {
+        numTurns++;
+        currTurn = OTHER(currTurn);
+        currState.print();
+      }
+      return retval;
+    }
 
-      assert(s.move(move.x, move.y, move.dir, true));
-      int goodness = evaluate(s, OTHER(player), maxDepth, -beta, -maxab);
-      if (goodness > best) {
-        best = goodness;
-        if (best > maxab) {
-          maxab = best;
+    Player getCurrTurn() const {
+      return currTurn;
+    }
+
+    Player getWinner() const {
+      return currState.getWinner();
+    }
+
+    int getNumTurns() const {
+      return numTurns;
+    }
+
+    bool checkIsGameDrawn(const State& s) const {
+      int i = 0;
+      int numRepeat[2] = { 0, 0 };
+      for (const auto& state : history) {
+        if (s == state) {
+          numRepeat[i % 2]++;
+          if (numRepeat[0] == 3 || numRepeat[1] == 3) {
+            return true;
+          }
+        }
+        i++;
+      }
+      return false;
+    }
+
+    bool isDraw() const {
+      return checkIsGameDrawn(currState);
+    }
+
+    shared_ptr<Move> getBestMove() {
+      vector<Move> moves = currState.getMoves(currTurn);
+      shared_ptr<Move> bestMove;
+      int goodness = 0;
+      int bestWorst = -numeric_limits<int>::max();
+      for (auto& move : moves) {
+        pushState(currState);
+
+        assert(currState.move(move.x, move.y, move.dir, true));
+        if (currState.hasPlayerWon(currTurn)) {
+          bestMove = make_shared<Move>(move);
+          currState = popState();
+          break;
+        } else {
+          goodness = evaluate(currState, currTurn, MAX_DEPTH, -numeric_limits<int>::max(), -bestWorst);
+          if (goodness > bestWorst) {
+            bestWorst = goodness;
+            bestMove = make_shared<Move>(move);
+          } else if (goodness == bestWorst) {
+            if (find(history.begin(), history.end(), currState) == history.end() || rand() % 2 == 0) {
+              bestMove = make_shared<Move>(move);
+            }
+          }
+        }
+
+        currState = popState();
+      }
+
+      return bestMove;
+    }
+
+  private:
+    int oracle2() const {
+      char oracle;
+      int oracle2 = atoi(&oracle);
+      return oracle2;
+    }
+
+    int evaluate(State& s, const Player player, const int maxDepth, const int alpha, const int beta) {
+      const string hash = s.toString(player);
+      const auto it = stateMap.find(hash);
+      if (it != stateMap.end()) {
+        return it->second;
+      } else {
+        const string otherHash = s.toString(OTHER(player));
+        const auto it2 = stateMap.find(otherHash);
+        if (it2 != stateMap.end()) {
+          return -it2->second;
         }
       }
 
-      s = popState();
+      if (s.hasPlayerWon(player)) {
+        int retval = numeric_limits<int>::max() - getCurrDepth();
+        stateMap[hash] = Player::WHITE == player ? retval : -retval;
+        return retval;
+      }
+      else if (s.hasPlayerWon(OTHER(player))) {
+        int retval =  -(numeric_limits<int>::max() - getCurrDepth());
+        stateMap[hash] = Player::WHITE == player ? retval : -retval;
+        return retval;
+      } else if (checkIsGameDrawn(s)) {
+        stateMap[hash] = 0;
+        return 0;
+      } else if (getCurrDepth() == maxDepth) {
+        int retval = Player::WHITE == player ? -100000 : 100000;
+        return retval;
+      }
+      else {
+        // now it's the other player's turn
+        int best = -numeric_limits<int>::max();
+        int maxab = alpha;
+        vector<Move> moves = s.getMoves(OTHER(player));
+        for (auto& move : moves) {
+          pushState(s);
+
+          assert(s.move(move.x, move.y, move.dir, true));
+          int goodness = evaluate(s, OTHER(player), maxDepth, -beta, -maxab);
+          if (goodness > best) {
+            best = goodness;
+            if (best > maxab) {
+              maxab = best;
+            }
+          }
+
+          s = popState();
 
 #if USE_AB_PRUNING
-      if (best > beta) {
-        break;
-      }
+          if (best > beta) {
+            break;
+          }
 #endif
-    }
-
-    return -best;
-  }
-}
-
-static string makeMove(State& s, const Player player, const int maxDepth) {
-  vector<Move> moves = s.getMoves(player);
-  shared_ptr<Move> bestMove;
-  int goodness = 0;
-  int bestWorst = -numeric_limits<int>::max();
-  for (auto& move : moves) {
-    pushState(s);
-
-    assert(s.move(move.x, move.y, move.dir, true));
-    if (s.hasPlayerWon(player)) {
-      bestMove = make_shared<Move>(move);
-      s = popState();
-      break;
-    } else {
-      goodness = evaluate(s, player, maxDepth, -numeric_limits<int>::max(), -bestWorst);
-      if (goodness > bestWorst) {
-        bestWorst = goodness;
-        bestMove = make_shared<Move>(move);
-      } else if (goodness == bestWorst) {
-        if (find(history.begin(), history.end(), s) == history.end() || rand() % 2 == 0) {
-          bestMove = make_shared<Move>(move);
         }
+
+        int retval = -best;
+        stateMap[hash] = Player::WHITE == player ? retval : -retval;
+        return retval;
       }
     }
 
-    s = popState();
-  }
+    int getCurrDepth() const {
+      return history.size() - numTurns;
+    }
 
-  if (bestMove) {
-    cout << "bestWorst: " << bestWorst << endl;
-    s.move(bestMove->x, bestMove->y, bestMove->dir, true);
-    return bestMove->toString();
-  }
-  return "";
-}
+    void pushState(const State& s) {
+      history.push_back(s);
+    }
+
+    State popState() {
+      State s = history.back();
+      history.pop_back();
+      return s;
+    }
+
+  public:
+    map<string, int> stateMap;
+  private:
+    Player currTurn;
+    State currState;
+    vector<State> history;
+    int numTurns = 0;
+};
 
 static void dumpStateMap(const int width, const int height, const map<string, int>& stateMap, const string& fileName) {
   stringstream ss;
@@ -131,6 +205,7 @@ static void dumpStateMap(const int width, const int height, const map<string, in
   out.close();
 }
 
+#if 0
 static map<string, int> loadStateMap(const int width, const int height) {
   stringstream ss;
   ss << "stateMap_" << width << "_" << height << ".txt";
@@ -147,6 +222,7 @@ static map<string, int> loadStateMap(const int width, const int height) {
 
   return stateMap;
 }
+#endif
 
 inline bool fileExists(const std::string& name) {
   struct stat buffer;
@@ -154,6 +230,7 @@ inline bool fileExists(const std::string& name) {
 }
 
 static void populateStates(const int width, const int height, const std::string& fileName) {
+#if 0
   cout << fileName << endl;
   if (!fileExists(fileName)) {
     cout << "File not found: " << fileName << endl;
@@ -173,13 +250,15 @@ static void populateStates(const int width, const int height, const std::string&
 
   map<string, int> stateMap;
   for (auto& s : states) {
-    stateMap[s.toString()] = evaluate(s, Player::WHITE, MAX_DEPTH, -numeric_limits<int>::max(), numeric_limits<int>::max());
+    stateMap[s.toString()] = evaluate(s, Player::WHITE, MAX_DEPTH, -numeric_limits<int>::max(), numeric_limits<int>::max(), 0);
   }
 
   dumpStateMap(width, height, stateMap, fileName);
+#endif
 }
 
 static void generateStates(const int width, const int height) {
+#if 0
   const int n = width * height;
   const int r = 8;
   vector<bool> v(n);
@@ -223,6 +302,7 @@ static void generateStates(const int width, const int height) {
     out << s << endl;
   }
   out.close();
+#endif
 }
 
 int main(int argc, char* const argv[]) {
@@ -278,33 +358,45 @@ int main(int argc, char* const argv[]) {
     return 0;
   }
 
-  State s(width, height);
-  Player currTurn = Player::WHITE; // white starts
+  Game game(width, height);
   const Player player = isWhite ? Player::WHITE : Player::BLACK;
-  while (s.getWinner() == Player::NONE) {
-    cout << endl << endl << "numTurns: " << numTurns << endl;
-    history.push_back(s);
+  while (game.getWinner() == Player::NONE) {
+    cout << endl << endl << "turn #: " << game.getNumTurns() << endl;
     Timer t;
-    if (currTurn == player) {
-      string res = makeMove(s, currTurn, MAX_DEPTH);
+    if (game.getCurrTurn() == player) {
+      shared_ptr<Move> bestMove = game.getBestMove();
+      string res = "N/A";
+      if (bestMove) {
+        res = bestMove->toString();
+        game.move(res, true);
+      }
       cout << res << endl;
     } else {
       if (isAuto) {
-        string res = makeMove(s, currTurn, MAX_DEPTH);
+        shared_ptr<Move> bestMove = game.getBestMove();
+        string res = "N/A";
+        if (bestMove) {
+          res = bestMove->toString();
+          game.move(res, true);
+        }
         cout << res << endl;
       } else {
         string cmd;
         cin >> cmd;
         cout << "Got: " << cmd << endl;
+        if (!game.move(cmd, false)) {
+          cout << "Invalid move: " << cmd << endl;
+          break;
+        }
       }
     }
-    s.print();
-    if (isDraw(s)) {
+    if (game.isDraw()) {
       cout << "Draw by 3-fold repetition" << endl;
       break;
     }
-    currTurn = OTHER(currTurn);
-    numTurns++;
+    break; // TODO: remove this
   }
+
+  dumpStateMap(width, height, game.stateMap, "g_stateMap.txt");
   return 0;
 }
