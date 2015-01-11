@@ -9,7 +9,7 @@
 using namespace std;
 
 #define USE_AB_PRUNING 1
-#define MAX_DEPTH 100
+#define MAX_DEPTH 5
 
 class Game {
   public:
@@ -110,7 +110,7 @@ class Game {
       return oracle2;
     }
 
-    int evaluate(State& s, const Player player, const int maxDepth, const int alpha, const int beta) {
+    int evaluate(State& s, const Player player, const int maxDepth, int alpha, const int beta) {
       const string hash = s.toString(player);
       const auto it = stateMap.find(hash);
       if (it != stateMap.end()) {
@@ -141,31 +141,26 @@ class Game {
       }
       else {
         // now it's the other player's turn
-        int best = -numeric_limits<int>::max();
-        int maxab = alpha;
+        int bestVal = -numeric_limits<int>::max();
         vector<Move> moves = s.getMoves(OTHER(player));
         for (auto& move : moves) {
           pushState(s);
 
           assert(s.move(move.x, move.y, move.dir, true));
-          int goodness = evaluate(s, OTHER(player), maxDepth, -beta, -maxab);
-          if (goodness > best) {
-            best = goodness;
-            if (best > maxab) {
-              maxab = best;
-            }
-          }
+          int val = evaluate(s, OTHER(player), maxDepth, -beta, -alpha);
+          bestVal = max(bestVal, val);
+          alpha = max(alpha, val);
 
           s = popState();
 
 #if USE_AB_PRUNING
-          if (best > beta) {
+          if (alpha > beta) {
             break;
           }
 #endif
         }
 
-        int retval = -best;
+        int retval = -bestVal;
         stateMap[hash] = Player::WHITE == player ? retval : -retval;
         return retval;
       }
@@ -394,7 +389,7 @@ int main(int argc, char* const argv[]) {
       cout << "Draw by 3-fold repetition" << endl;
       break;
     }
-    break; // TODO: remove this
+//    break; // TODO: remove this
   }
 
   dumpStateMap(width, height, game.stateMap, "g_stateMap.txt");
