@@ -1,5 +1,6 @@
 #include <cassert>
 #include <limits>
+#include <map>
 #include <memory>
 #include <unistd.h>
 #include <State.h>
@@ -53,7 +54,7 @@ static int evaluate(State& s, const Player player, const int maxDepth, const int
   }
   else {
     // now it's the other player's turn
-    int best = -(numeric_limits<int>::max());
+    int best = -numeric_limits<int>::max();
     int maxab = alpha;
     vector<Move> moves = s.getMoves(OTHER(player));
     for (auto& move : moves) {
@@ -117,18 +118,61 @@ static string makeMove(State& s, const Player player, const int maxDepth) {
   return "";
 }
 
+static void generateTrainData(const int width, const int height) {
+  const int n = width * height;
+  const int r = 8;
+  vector<bool> v(n);
+  fill(v.begin() + n - r, v.end(), true);
+
+  map<string, int> stateMap;
+  do {
+    vector<Piece> pieces;
+    pieces.reserve(r);
+    for (int i = 0; i < n; ++i) {
+      if (v[i]) {
+        const int x = i % width;
+        const int y = i / width;
+        pieces.push_back(Piece(x, y));
+      }
+    }
+
+    const vector< vector<int> >& ps = getCombinations_8_4();
+    for (const auto& p : ps) {
+      vector<Piece> whitePieces;
+      vector<Piece> blackPieces;
+      for (const auto& i : p) {
+        whitePieces.push_back(pieces[i]);
+      }
+      for (int i = 0; i < r; ++i) {
+        if (find(p.begin(), p.end(), i) == p.end()) {
+          blackPieces.push_back(pieces[i]);
+        }
+      }
+
+      State s(width, height);
+      s.setPieces(whitePieces, blackPieces);
+      stateMap[s.toString()] = -numeric_limits<int>::max();
+    }
+  } while (next_permutation(v.begin(), v.end()));
+  cout << stateMap.size() << endl;
+}
+
 int main(int argc, char* const argv[]) {
   bool isAuto = false;
   bool isWhite = true;
   bool isSmallBoard = true;
+  bool isGenMode = false;
   char c = '\0';
-  while ((c = getopt(argc, argv, "ablh")) != -1) {
+  while ((c = getopt(argc, argv, "abglh")) != -1) {
     switch (c) {
       case 'a':
         isAuto = true;
         break;
       case 'b':
         isWhite = false;
+        break;
+      case 'g':
+        isGenMode = true;
         break;
       case 'l':
         isSmallBoard = false;
@@ -150,6 +194,11 @@ int main(int argc, char* const argv[]) {
   if (!isSmallBoard) {
     width = 7;
     height = 6;
+  }
+
+  if (isGenMode) {
+    generateTrainData(width, height);
+    return 0;
   }
 
   State s(width, height);

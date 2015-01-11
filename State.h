@@ -2,6 +2,7 @@
 #define INCLUDED_STATE_H
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstdlib>
 #include <ctime>
@@ -14,6 +15,7 @@ using namespace std;
 #define WHITE_CHAR '0'
 #define BLACK_CHAR '1'
 #define OTHER(player) ((player) == Player::WHITE ? Player::BLACK : Player::WHITE)
+#define toInt(c) (c - '0')
 
 class Timer {
   public:
@@ -28,6 +30,50 @@ class Timer {
   private:
     clock_t m_start;
 };
+
+static vector< vector<int> > getCombinations(const int n, const int r) {
+  vector< vector<int> > res;
+
+  vector<bool> v(n);
+  fill(v.begin() + n - r, v.end(), true);
+
+  do {
+    vector<int> p;
+    p.reserve(r);
+    for (int i = 0; i < n; ++i) {
+      if (v[i]) {
+        p.push_back(i);
+      }
+    }
+    res.push_back(p);
+  } while (next_permutation(v.begin(), v.end()));
+
+  return res;
+}
+
+static const vector< vector<int> >& getCombinations_8_4() {
+  static vector< vector<int> > v;
+  if (v.empty()) {
+    v = getCombinations(8, 4);
+  }
+  return v;
+}
+
+static const vector< vector<int> >& getCombinations_4_3() {
+  static vector< vector<int> > v;
+  if (v.empty()) {
+    v = getCombinations(NUM_PIECES_PER_SIDE, 3);
+  }
+  return v;
+}
+
+static const vector< vector<int> >& getCombinations_4_2() {
+  static vector< vector<int> > v;
+  if (v.empty()) {
+    v = getCombinations(NUM_PIECES_PER_SIDE, 2);
+  }
+  return v;
+}
 
 enum Direction {
   N = 0,
@@ -94,6 +140,11 @@ class State {
     }
 
     ~State() {
+    }
+
+    void setPieces(const vector<Piece>& whitePieces, const vector<Piece>& blackPieces) {
+      getPieces(Player::WHITE) = whitePieces;
+      getPieces(Player::BLACK) = blackPieces;
     }
 
     bool operator==(const State& rhs) const {
@@ -196,6 +247,32 @@ class State {
       return getNumRuns(player) - getNumRuns(OTHER(player));
     }
 
+    string toString() const {
+      stringstream ss;
+      for (const auto& p : getPieces(Player::WHITE)) {
+        ss << p.x << p.y;
+      }
+      for (const auto& p : getPieces(Player::BLACK)) {
+        ss << p.x << p.y;
+      }
+      return ss.str();
+    }
+
+    void fromString(const string& s) {
+      assert(s.length() == 16);
+      vector<Piece>& whitePieces = getPieces(Player::WHITE);
+      vector<Piece>& blackPieces = getPieces(Player::BLACK);
+      int i = 0;
+      for (int j = 0; j < whitePieces.size(); ++j) {
+        whitePieces[j].x = toInt(s[i++]);
+        whitePieces[j].y = toInt(s[i++]);
+      }
+      for (int j = 0; j < blackPieces.size(); ++j) {
+        blackPieces[j].x = toInt(s[i++]);
+        blackPieces[j].y = toInt(s[i++]);
+      }
+    }
+
   private:
     int getNumRuns(const Player player) const {
       const auto& ps = getCombinations_4_2();
@@ -236,42 +313,6 @@ class State {
       const int dy = abs(y1 - y2);
       const int dist = dx + dy;
       return (dx + dy == 1) || (dx == 1 && dy == 1);
-    }
-
-    vector< vector<int> > getCombinations(const int n, const int r) const {
-      vector< vector<int> > res;
-
-      vector<bool> v(n);
-      fill(v.begin() + n - r, v.end(), true);
-
-      do {
-        vector<int> p;
-        p.reserve(r);
-        for (int i = 0; i < n; ++i) {
-          if (v[i]) {
-            p.push_back(i);
-          }
-        }
-        res.push_back(p);
-      } while (next_permutation(v.begin(), v.end()));
-
-      return res;
-    }
-
-    const vector< vector<int> >& getCombinations_4_3() const {
-      static vector< vector<int> > v;
-      if (v.empty()) {
-        v = getCombinations(NUM_PIECES_PER_SIDE, 3);
-      }
-      return v;
-    }
-
-    const vector< vector<int> >& getCombinations_4_2() const {
-      static vector< vector<int> > v;
-      if (v.empty()) {
-        v = getCombinations(NUM_PIECES_PER_SIDE, 2);
-      }
-      return v;
     }
 
     Piece* findPiece(const int x, const int y) {

@@ -3,7 +3,7 @@
 all: main
 
 CXX=g++-4.9
-CXX_FLAGS=-I. -std=c++11 -MMD
+CXX_FLAGS=-I. -std=c++11 -MMD -O3
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)
 DEPS := $(OBJS:.o=.d)
