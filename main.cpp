@@ -9,7 +9,7 @@
 using namespace std;
 
 #define USE_AB_PRUNING 1
-#define MAX_DEPTH 5
+#define MAX_DEPTH 10
 
 class Game {
   public:
@@ -51,6 +51,10 @@ class Game {
 
     int getNumTurns() const {
       return numTurns;
+    }
+
+    void setCurrState(const State& state) {
+      currState = state;
     }
 
     bool checkIsGameDrawn(const State& s) const {
@@ -103,41 +107,16 @@ class Game {
       return bestMove;
     }
 
-  private:
-    int oracle2() const {
-      char oracle;
-      int oracle2 = atoi(&oracle);
-      return oracle2;
-    }
-
     int evaluate(State& s, const Player player, const int maxDepth, int alpha, const int beta) {
-      const string hash = s.toString(player);
-      const auto it = stateMap.find(hash);
-      if (it != stateMap.end()) {
-        return it->second;
-      } else {
-        const string otherHash = s.toString(OTHER(player));
-        const auto it2 = stateMap.find(otherHash);
-        if (it2 != stateMap.end()) {
-          return -it2->second;
-        }
-      }
-
       if (s.hasPlayerWon(player)) {
-        int retval = numeric_limits<int>::max() - getCurrDepth();
-        stateMap[hash] = Player::WHITE == player ? retval : -retval;
-        return retval;
+        return numeric_limits<int>::max() - getCurrDepth();
       }
       else if (s.hasPlayerWon(OTHER(player))) {
-        int retval =  -(numeric_limits<int>::max() - getCurrDepth());
-        stateMap[hash] = Player::WHITE == player ? retval : -retval;
-        return retval;
+        return -(numeric_limits<int>::max() - getCurrDepth());
       } else if (checkIsGameDrawn(s)) {
-        stateMap[hash] = 0;
         return 0;
       } else if (getCurrDepth() == maxDepth) {
-        int retval = Player::WHITE == player ? -100000 : 100000;
-        return retval;
+        return Player::WHITE == player ? -100000 : 100000;
       }
       else {
         // now it's the other player's turn
@@ -160,12 +139,11 @@ class Game {
 #endif
         }
 
-        int retval = -bestVal;
-        stateMap[hash] = Player::WHITE == player ? retval : -retval;
-        return retval;
+        return -bestVal;
       }
     }
 
+  private:
     int getCurrDepth() const {
       return history.size() - numTurns;
     }
@@ -180,8 +158,6 @@ class Game {
       return s;
     }
 
-  public:
-    map<string, int> stateMap;
   private:
     Player currTurn;
     State currState;
@@ -225,7 +201,6 @@ inline bool fileExists(const std::string& name) {
 }
 
 static void populateStates(const int width, const int height, const std::string& fileName) {
-#if 0
   cout << fileName << endl;
   if (!fileExists(fileName)) {
     cout << "File not found: " << fileName << endl;
@@ -245,15 +220,15 @@ static void populateStates(const int width, const int height, const std::string&
 
   map<string, int> stateMap;
   for (auto& s : states) {
-    stateMap[s.toString()] = evaluate(s, Player::WHITE, MAX_DEPTH, -numeric_limits<int>::max(), numeric_limits<int>::max(), 0);
+    Game game(width, height);
+    game.setCurrState(s);
+    stateMap[s.toString(Player::WHITE)] = game.evaluate(s, Player::WHITE, MAX_DEPTH, -numeric_limits<int>::max(), numeric_limits<int>::max());
   }
 
   dumpStateMap(width, height, stateMap, fileName);
-#endif
 }
 
 static void generateStates(const int width, const int height) {
-#if 0
   const int n = width * height;
   const int r = 8;
   vector<bool> v(n);
@@ -287,7 +262,7 @@ static void generateStates(const int width, const int height) {
 
       State s(width, height);
       s.setPieces(whitePieces, blackPieces);
-      states.push_back(s.toString());
+      states.push_back(s.toString(Player::WHITE));
     }
   } while (next_permutation(v.begin(), v.end()));
   stringstream ss;
@@ -297,7 +272,6 @@ static void generateStates(const int width, const int height) {
     out << s << endl;
   }
   out.close();
-#endif
 }
 
 int main(int argc, char* const argv[]) {
@@ -389,9 +363,7 @@ int main(int argc, char* const argv[]) {
       cout << "Draw by 3-fold repetition" << endl;
       break;
     }
-//    break; // TODO: remove this
   }
 
-  dumpStateMap(width, height, game.stateMap, "g_stateMap.txt");
   return 0;
 }
