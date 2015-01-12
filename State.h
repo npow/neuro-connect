@@ -278,7 +278,8 @@ class State {
     int getGoodness(const Player player) const {
       redis::client& client = getRedisClient();
       const string hash = toString(Player::WHITE);
-      redis::distributed_int goodness(hash, 0, client);
+      const int val = getNumRuns(player) - getNumRuns(OTHER(player));
+      redis::distributed_int goodness(hash, val, client);
       return player == Player::WHITE ? goodness : -goodness;
     }
 
