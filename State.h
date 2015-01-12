@@ -276,10 +276,13 @@ class State {
     }
 
     int getGoodness(const Player player) const {
-      return getNumRuns(player) - getNumRuns(OTHER(player));
+      redis::client& client = getRedisClient();
+      const string hash = toString(Player::WHITE);
+      redis::distributed_int goodness(hash, 0, client);
+      return player == Player::WHITE ? goodness : -goodness;
     }
 
-    string toString(const Player player) {
+    string toString(const Player player) const {
       stringstream ss;
       auto p1 = getPieces(player); // copy
       sort(p1.begin(), p1.end());

@@ -203,25 +203,24 @@ static void populateStates(const int width, const int height, const int maxDepth
     return;
   }
 
+  redis::client& client = getRedisClient();
   ifstream in(fileName.c_str());
   string line;
-  vector<State> states;
-  states.reserve(8817900);
   while (in >> line) {
     State s(width, height);
     s.fromString(line);
-    states.push_back(s);
-  }
-  in.close();
 
-  map<string, int> stateMap;
-  for (auto& s : states) {
+    const string hash = s.toString(Player::WHITE);
+    redis::distributed_int goodness(hash, goodness, client);
+    if (abs(goodness) > 100000) { // either a win or loss
+      continue;
+    }
+
     Game game(width, height, maxDepth);
     game.setCurrState(s);
-    stateMap[s.toString(Player::WHITE)] = game.evaluate(s, Player::WHITE, 0, -numeric_limits<int>::max(), numeric_limits<int>::max());
+    goodness = game.evaluate(s, Player::WHITE, 0, -numeric_limits<int>::max(), numeric_limits<int>::max());
   }
-
-  dumpStateMap(width, height, stateMap, fileName);
+  in.close();
 }
 
 static void generateStates(const int width, const int height) {
