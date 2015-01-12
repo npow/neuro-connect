@@ -9,6 +9,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <redisclient.h>
 using namespace std;
 
 #define NUM_PIECES_PER_SIDE 4
@@ -16,6 +17,24 @@ using namespace std;
 #define BLACK_CHAR '1'
 #define OTHER(player) ((player) == Player::WHITE ? Player::BLACK : Player::WHITE)
 #define toInt(c) (c - '0')
+
+static boost::shared_ptr<redis::client> init_non_cluster_client() {
+  const char* c_host = getenv("REDIS_HOST");
+  string host = "localhost";
+  if (c_host) {
+    host = c_host;
+  }
+  return boost::shared_ptr<redis::client>(new redis::client(host));
+}
+
+static redis::client& getRedisClient() {
+  static boost::shared_ptr<redis::client> shared_c;
+  if (!shared_c) {
+    shared_c = init_non_cluster_client();
+  }
+  redis::client& c = *shared_c;
+  return c;
+}
 
 class Timer {
   public:
