@@ -211,7 +211,7 @@ static void populateStates(const int width, const int height, const int maxDepth
     s.fromString(line);
 
     const string hash = s.toString(Player::WHITE);
-    redis::distributed_int goodness(hash, goodness, client);
+    redis::distributed_int goodness(hash, 0, client);
     if (abs(goodness) > 100000) { // either a win or loss
       continue;
     }
