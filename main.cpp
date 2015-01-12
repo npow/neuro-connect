@@ -175,24 +175,21 @@ static void dumpStateMap(const int width, const int height, const map<string, in
   out.close();
 }
 
-#if 0
-static map<string, int> loadStateMap(const int width, const int height) {
-  stringstream ss;
-  ss << "stateMap_" << width << "_" << height << ".txt";
-
+static map<string, int> loadStateMap(const std::string& fileName) {
   map<string, int> stateMap;
-  ifstream in(ss.str());
+  ifstream in(fileName.c_str());
   while (!in.eof()) {
     string stateStr;
     int goodness;
     in >> stateStr >> goodness;
-    stateMap[stateStr] = goodness;
+    if (!stateStr.empty()) {
+      stateMap[stateStr] = goodness;
+    }
   }
   in.close();
 
   return stateMap;
 }
-#endif
 
 inline bool fileExists(const std::string& name) {
   struct stat buffer;
@@ -273,16 +270,27 @@ static void generateStates(const int width, const int height) {
   out.close();
 }
 
+void runTests(const int width, const int height, const std::string& fileName) {
+  redis::client& client = getRedisClient();
+  map<string, int> stateMap = loadStateMap(fileName);
+  cout << fileName << ", #states: " << stateMap.size() << endl;
+  for (const auto& p : stateMap) {
+    redis::distributed_int(p.first, p.second, client);
+    assert(client.exists(p.first));
+  }
+}
+
 int main(int argc, char* const argv[]) {
   bool isAuto = false;
   bool isWhite = true;
   bool isSmallBoard = true;
   bool isGenMode = false;
   bool isPopMode = false;
+  bool isTestMode = false;
   int maxDepth = 5;
   string stateMapFileName;
   char c = '\0';
-  while ((c = getopt(argc, argv, "abd:glhp:")) != -1) {
+  while ((c = getopt(argc, argv, "abd:glhp:t:")) != -1) {
     switch (c) {
       case 'a':
         isAuto = true;
@@ -310,6 +318,10 @@ int main(int argc, char* const argv[]) {
         isPopMode = true;
         stateMapFileName = optarg;
         break;
+      case 't':
+        isTestMode = true;
+        stateMapFileName = optarg;
+        break;
     }
   }
   cout << "isWhite: " << isWhite << endl;
@@ -328,6 +340,9 @@ int main(int argc, char* const argv[]) {
     return 0;
   } else if (isPopMode) {
     populateStates(width, height, maxDepth, stateMapFileName);
+    return 0;
+  } else if (isTestMode) {
+    runTests(width, height, stateMapFileName);
     return 0;
   }
 
