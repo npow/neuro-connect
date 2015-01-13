@@ -11,8 +11,12 @@ else
 CXX = g++-4.9
 endif
 
-CXX_FLAGS=-I. -I$(REDIS_CLIENT) -std=c++0x -MMD -O3 -rdynamic
-LD_FLAGS=-L$(REDIS_CLIENT) -lredisclient -lstdc++ -lpthread -lboost_thread-mt
+CXX_FLAGS=-I. -std=c++0x -MMD -O0
+LD_FLAGS = -lstdc++ -lpthread -lboost_thread-mt
+ifeq ($(USE_REDIS), 1)
+LD_FLAGS += -L$(REDIS_CLIENT) -lredisclient
+endif
+
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)
 DEPS := $(OBJS:.o=.d)

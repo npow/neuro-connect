@@ -2,14 +2,18 @@
 #define INCLUDED_STATE_H
 
 #include <algorithm>
+#include <bitset>
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <vector>
+#if USE_REDIS
 #include <redisclient.h>
+#endif
 using namespace std;
 
 #define NUM_PIECES_PER_SIDE 4
@@ -18,6 +22,7 @@ using namespace std;
 #define OTHER(player) ((player) == Player::WHITE ? Player::BLACK : Player::WHITE)
 #define toInt(c) (c - '0')
 
+#if USE_REDIS
 static boost::shared_ptr<redis::client> init_non_cluster_client() {
   const char* c_host = getenv("REDIS_HOST");
   string host = "localhost";
@@ -35,6 +40,7 @@ static redis::client& getRedisClient() {
   redis::client& c = *shared_c;
   return c;
 }
+#endif
 
 class Timer {
   public:
@@ -125,13 +131,10 @@ struct Piece {
     if (x < rhs.x) {
       return true;
     } else if (x == rhs.x) {
-      if (y < rhs.y) {
-        return true;
-      }
+      return y < rhs.y;
     } else {
       return y < rhs.y;
     }
-    return false;
   }
 
   int x;
@@ -174,6 +177,14 @@ class State {
     ~State() {
     }
 
+    int getWidth() const {
+      return m_width;
+    }
+
+    int getHeight() const {
+      return m_height;
+    }
+
     void setPieces(const vector<Piece>& whitePieces, const vector<Piece>& blackPieces) {
       getPieces(Player::WHITE) = whitePieces;
       getPieces(Player::BLACK) = blackPieces;
@@ -199,7 +210,7 @@ class State {
     vector<Move> getMoves(const Player player) const {
       vector<Move> v;
       v.reserve(8);
-      for (auto& piece : getPieces(player)) {
+      for (const auto& piece : getPieces(player)) {
         for (int dir = Direction::N; dir != Direction::END; ++dir) {
           if (isValidMove(&piece, static_cast<Direction>(dir))) {
             v.push_back(Move(piece.x, piece.y, static_cast<Direction>(dir)));
@@ -276,46 +287,46 @@ class State {
     }
 
     int getGoodness(const Player player) const {
-      const string hash = toString(Player::WHITE);
-      const auto& it = stateMap->find(hash);
-      if (it != stateMap->end() && abs(it->second) > 1000000) {
-        return player == Player::WHITE ? it->second : -it->second;
-      }
       const int val = getNumRuns(player) - getNumRuns(OTHER(player));
       return val;
     }
 
-    string toString(const Player player) const {
-      stringstream ss;
-      auto p1 = getPieces(player); // copy
-      sort(p1.begin(), p1.end());
-      for (const auto& p : p1) {
-        ss << p.x << p.y;
+    uint64_t getHash(const Player player) const {
+      uint64_t hash = 0;
+      for (const auto& p : getPieces(player)) {
+        const int x = p.x - 1;
+        const int y = p.y - 1;
+        const int index = y * m_width + x;
+        hash |= (2 << index);
       }
-      auto p2 = getPieces(OTHER(player)); // copy
-      sort(p2.begin(), p2.end());
-      for (const auto& p : p2) {
-        ss << p.x << p.y;
+      uint64_t otherHash = 0;
+      for (const auto& p : getPieces(OTHER(player))) {
+        const int x = p.x - 1;
+        const int y = p.y - 1;
+        const int index = y * m_width + x;
+        otherHash |= (2 << index);
       }
-      return ss.str();
+      return (hash << 32) + otherHash;
     }
 
-    void fromString(const string& s) {
-      assert(s.length() == 16);
-      vector<Piece>& whitePieces = getPieces(Player::WHITE);
-      vector<Piece>& blackPieces = getPieces(Player::BLACK);
-      int i = 0;
-      for (int j = 0; j < whitePieces.size(); ++j) {
-        whitePieces[j].x = toInt(s[i++]);
-        whitePieces[j].y = toInt(s[i++]);
-      }
-      for (int j = 0; j < blackPieces.size(); ++j) {
-        blackPieces[j].x = toInt(s[i++]);
-        blackPieces[j].y = toInt(s[i++]);
+    void fromHash(const uint64_t hash) {
+      auto& whitePieces = getPieces(Player::WHITE);
+      auto& blackPieces = getPieces(Player::BLACK);
+      whitePieces.clear();
+      blackPieces.clear();
+      for (int i = 0; i < m_width * m_height; ++i) {
+        const long key = (2 << i);
+        if ((hash & key) >> i) {
+          const int x = (i % m_width) + 1;
+          const int y = (i / m_width) + 1;
+          blackPieces.push_back(Piece(x, y));
+        } else if (((hash >> 32) & key) >> (i + 1)) {
+          const int x = (i % m_width) + 1;
+          const int y = (i / m_width) + 1;
+          whitePieces.push_back(Piece(x, y));
+        }
       }
     }
-
-    map<string, int>* stateMap;
 
   private:
     int getNumRuns(const Player player) const {

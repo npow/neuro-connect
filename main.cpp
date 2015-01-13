@@ -3,6 +3,8 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <random>
+#include <set>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <State.h>
@@ -155,7 +157,7 @@ class Game {
       }
     }
 
-    map<string, int>* stateMap;
+    map<uint64_t, int>* stateMap;
 
   private:
     void pushState(const State& s) {
@@ -176,7 +178,7 @@ class Game {
     vector<State> history;
 };
 
-static void dumpStateMap(const int width, const int height, const map<string, int>& stateMap, const string& fileName) {
+static void dumpStateMap(const int width, const int height, const map<uint64_t, int>& stateMap, const string& fileName) {
   stringstream ss;
   ss << fileName << "_statemap";
   ofstream out(ss.str());
@@ -186,15 +188,15 @@ static void dumpStateMap(const int width, const int height, const map<string, in
   out.close();
 }
 
-static map<string, int> loadStateMap(const std::string& fileName) {
-  map<string, int> stateMap;
+static map<uint64_t, int> loadStateMap(const std::string& fileName) {
+  map<uint64_t, int> stateMap;
   ifstream in("combined_statemap");
   while (!in.eof()) {
-    string stateStr;
-    int goodness;
-    in >> stateStr >> goodness;
-    if (!stateStr.empty()) {
-      stateMap[stateStr] = goodness;
+    uint64_t hash = 0;
+    int goodness = 0;
+    in >> hash >> goodness;
+    if (!hash) {
+      stateMap[hash] = goodness;
     }
   }
   in.close();
@@ -207,7 +209,7 @@ inline bool fileExists(const std::string& name) {
   return (stat(name.c_str(), &buffer) == 0);
 }
 
-static int countDraws(const map<string, int>& stateMap) {
+static int countDraws(const map<uint64_t, int>& stateMap) {
   int numStates = 0;
   for (const auto& p : stateMap) {
     if (abs(p.second) > 100000) { // either a win or loss
@@ -225,7 +227,7 @@ static void populateStates(const int width, const int height, const int maxDepth
     return;
   }
 
-  map<string, int> stateMap = loadStateMap(fileName);
+  map<uint64_t, int> stateMap = loadStateMap(fileName);
   cout << "Before: " << countDraws(stateMap) << endl;
 
   int numStates = 0;
@@ -234,8 +236,7 @@ static void populateStates(const int width, const int height, const int maxDepth
       continue;
     }
     State s(width, height);
-    s.fromString(p.first);
-    s.stateMap = &stateMap;
+    s.fromHash(p.first);
 
     Game game(width, height, maxDepth);
     game.setCurrState(s);
@@ -260,7 +261,7 @@ static void generateStates(const int width, const int height) {
   vector<bool> v(n);
   fill(v.begin() + n - r, v.end(), true);
 
-  vector<string> states;
+  vector<uint64_t> states;
   states.reserve(8817900);
   do {
     vector<Piece> pieces;
@@ -288,7 +289,13 @@ static void generateStates(const int width, const int height) {
 
       State s(width, height);
       s.setPieces(whitePieces, blackPieces);
-      states.push_back(s.toString(Player::WHITE));
+      uint64_t hash = s.getHash(Player::WHITE);
+      states.push_back(hash);
+
+      State s1(width, height);
+      s1.fromHash(hash);
+      assert(hash == s1.getHash(Player::WHITE));
+      assert(s == s1);
     }
   } while (next_permutation(v.begin(), v.end()));
   stringstream ss;
@@ -301,13 +308,13 @@ static void generateStates(const int width, const int height) {
 }
 
 void runTests(const int width, const int height, const std::string& fileName) {
-  redis::client& client = getRedisClient();
-  map<string, int> stateMap = loadStateMap(fileName);
-  cout << fileName << ", #states: " << stateMap.size() << endl;
-  for (const auto& p : stateMap) {
-    redis::distributed_int(p.first, p.second, client);
-    assert(client.exists(p.first));
-  }
+  State s(width, height);
+  uint64_t hash = s.getHash(Player::WHITE);
+  cout << hash << endl;
+  s.print();
+  State s1(width, height);
+  s1.fromHash(hash);
+  s1.print();
 }
 
 int main(int argc, char* const argv[]) {
