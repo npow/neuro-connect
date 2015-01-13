@@ -276,11 +276,13 @@ class State {
     }
 
     int getGoodness(const Player player) const {
-      redis::client& client = getRedisClient();
       const string hash = toString(Player::WHITE);
+      const auto& it = stateMap->find(hash);
+      if (it != stateMap->end() && abs(it->second) > 1000000) {
+        return player == Player::WHITE ? it->second : -it->second;
+      }
       const int val = getNumRuns(player) - getNumRuns(OTHER(player));
-      redis::distributed_int goodness(hash, val, client);
-      return player == Player::WHITE ? goodness : -goodness;
+      return val;
     }
 
     string toString(const Player player) const {
@@ -313,6 +315,8 @@ class State {
       }
     }
 
+    map<string, int>* stateMap;
+
   private:
     int getNumRuns(const Player player) const {
       const auto& ps = getCombinations_4_2();
@@ -321,7 +325,7 @@ class State {
       for (const auto& p : ps) {
         const auto& A = pieces[p[0]];
         const auto& B = pieces[p[1]];
-        if (isAdjacent(A.x, A.y, B.x, B.y)) {
+        if (isAdjacent(A.x, A.y, B.x, B.y) || isDiagonallyAdjacent(A.x, A.y, B.x, B.y)) {
           numRuns++;
         }
       }
