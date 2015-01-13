@@ -1,7 +1,6 @@
 #include <cassert>
 #include <fstream>
 #include <limits>
-#include <map>
 #include <memory>
 #include <random>
 #include <set>
@@ -44,7 +43,7 @@ class Game {
     }
 
     Player getCurrTurn() const {
-      return currTurn;
+      return currState.getCurrTurn();
     }
 
     Player getWinner() const {
@@ -93,7 +92,7 @@ class Game {
           currState = popState();
           break;
         } else {
-          goodness = evaluate(currState, currTurn, 0, -numeric_limits<int>::max(), -bestWorst);
+          goodness = evaluate(currState, currTurn, maxDepth, -numeric_limits<int>::max(), -bestWorst);
           if (goodness > bestWorst) {
             bestWorst = goodness;
             bestMove = make_shared<Move>(move);
@@ -112,16 +111,6 @@ class Game {
     }
 
     int evaluate(State& s, const Player player, const int currDepth, int alpha, const int beta) {
-      if (find(history.begin(), history.end(), s) != history.end()) {
-        return 0;
-      }
-#if 0
-      const string hash = s.toString(Player::WHITE);
-      const auto& it = stateMap->find(hash);
-      if (it != stateMap->end() && abs(it->second) > 1000000) {
-        return player == Player::WHITE ? it->second : -it->second;
-      }
-#endif
       if (s.hasPlayerWon(player)) {
         return numeric_limits<int>::max() - currDepth;
       }
@@ -129,7 +118,7 @@ class Game {
         return -(numeric_limits<int>::max() - currDepth);
       } else if (checkIsGameDrawn(s)) {
         return 0;
-      } else if (currDepth == maxDepth) {
+      } else if (currDepth == 0) {
         return s.getGoodness(player);
       }
       else {
@@ -140,7 +129,7 @@ class Game {
           pushState(s);
 
           assert(s.move(move.x, move.y, move.dir, true));
-          int val = evaluate(s, OTHER(player), currDepth+1, -beta, -alpha);
+          int val = evaluate(s, OTHER(player), currDepth-1, -beta, -alpha);
           bestVal = max(bestVal, val);
           alpha = max(alpha, val);
 
@@ -157,8 +146,6 @@ class Game {
       }
     }
 
-    map<uint64_t, int>* stateMap;
-
   private:
     void pushState(const State& s) {
       history.push_back(s);
@@ -173,30 +160,34 @@ class Game {
   private:
     int numTurns;
     int maxDepth;
-    Player currTurn;
     State currState;
+    Player currTurn;
     vector<State> history;
 };
 
-static void dumpStateMap(const int width, const int height, const map<uint64_t, int>& stateMap, const string& fileName) {
+static void dumpStateMap(const int width, const int height, const StateMap_t& stateMap, const string& fileName) {
   stringstream ss;
   ss << fileName << "_statemap";
   ofstream out(ss.str());
   for (const auto& p : stateMap) {
-    out << p.first << " " << p.second << endl;
+    out << p.first << " " << p.second.depth << " " << p.second.bestValue
+        << " " << p.second.alpha << " " << p.second.beta << p.second.flag << endl;
   }
   out.close();
 }
 
-static map<uint64_t, int> loadStateMap(const std::string& fileName) {
-  map<uint64_t, int> stateMap;
+static StateMap_t loadStateMap(const std::string& fileName) {
+  StateMap_t stateMap;
   ifstream in("combined_statemap");
   while (!in.eof()) {
     uint64_t hash = 0;
+    Data d;
     int goodness = 0;
-    in >> hash >> goodness;
+    int flag;
+    in >> hash >> d.depth >> d.bestValue >> d.alpha >> d.beta >> flag;
+    d.flag = static_cast<Flag>(flag);
     if (!hash) {
-      stateMap[hash] = goodness;
+      stateMap[hash] = d;
     }
   }
   in.close();
@@ -209,10 +200,10 @@ inline bool fileExists(const std::string& name) {
   return (stat(name.c_str(), &buffer) == 0);
 }
 
-static int countDraws(const map<uint64_t, int>& stateMap) {
+static int countDraws(const StateMap_t& stateMap) {
   int numStates = 0;
   for (const auto& p : stateMap) {
-    if (abs(p.second) > 100000) { // either a win or loss
+    if (abs(p.second.bestValue) > 100000) { // either a win or loss
       continue;
     }
     numStates++;
@@ -227,12 +218,12 @@ static void populateStates(const int width, const int height, const int maxDepth
     return;
   }
 
-  map<uint64_t, int> stateMap = loadStateMap(fileName);
+  StateMap_t stateMap = loadStateMap(fileName);
   cout << "Before: " << countDraws(stateMap) << endl;
 
   int numStates = 0;
   for (auto& p : stateMap) {
-    if (abs(p.second) > 100000) { // either a win or loss
+    if (abs(p.second.bestValue) > 100000) { // either a win or loss
       continue;
     }
     State s(width, height);
@@ -240,8 +231,7 @@ static void populateStates(const int width, const int height, const int maxDepth
 
     Game game(width, height, maxDepth);
     game.setCurrState(s);
-    game.stateMap = &stateMap;
-    p.second = game.evaluate(s, Player::WHITE, 0, -numeric_limits<int>::max(), numeric_limits<int>::max());
+    p.second.bestValue = game.evaluate(s, Player::WHITE, maxDepth, -numeric_limits<int>::max(), numeric_limits<int>::max());
 
 #if 1
     numStates++;

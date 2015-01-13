@@ -1,6 +1,7 @@
 #ifndef INCLUDED_STATE_H
 #define INCLUDED_STATE_H
 
+
 #include <algorithm>
 #include <bitset>
 #include <cassert>
@@ -8,13 +9,30 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
-#include <map>
+#include <unordered_map>
 #include <sstream>
 #include <vector>
+#include "Zobrist.h"
 #if USE_REDIS
 #include <redisclient.h>
 #endif
 using namespace std;
+
+enum Flag {
+  LOWERBOUND = 0,
+  UPPERBOUND = 1,
+  EXACT = 2
+};
+
+struct Data {
+  Data() : depth(0), bestValue(0), alpha(0), beta(0) {}
+  int depth;
+  int bestValue;
+  int alpha;
+  int beta;
+  Flag flag;
+};
+typedef unordered_map<uint64_t, Data> StateMap_t;
 
 #define NUM_PIECES_PER_SIDE 4
 #define WHITE_CHAR '0'
@@ -160,7 +178,7 @@ struct Move {
 
 class State {
   public:
-    State(const int width, const int height) : m_width(width), m_height(height) {
+    State(const int width, const int height) : m_currTurn(Player::WHITE), m_width(width), m_height(height) {
       const int offset = (7 == width && 6 == height ? 1 : 0);
 
       getPieces(Player::WHITE).push_back(Piece(1+offset, 1+offset));
@@ -175,6 +193,10 @@ class State {
     }
 
     ~State() {
+    }
+
+    Player getCurrTurn() const {
+      return m_currTurn;
     }
 
     int getWidth() const {
@@ -192,7 +214,8 @@ class State {
 
     bool operator==(const State& rhs) const {
       return isEqual(getPieces(Player::WHITE), rhs.getPieces(Player::WHITE)) &&
-             isEqual(getPieces(Player::BLACK), rhs.getPieces(Player::BLACK));
+             isEqual(getPieces(Player::BLACK), rhs.getPieces(Player::BLACK)) &&
+             m_currTurn == rhs.m_currTurn;
     }
 
     bool operator!=(const State& rhs) const {
@@ -236,6 +259,7 @@ class State {
       } else if (Direction::W == dir) {
         piece->x -= 1;
       }
+      m_currTurn = OTHER(m_currTurn);
       return true;
     }
 
@@ -289,6 +313,26 @@ class State {
     int getGoodness(const Player player) const {
       const int val = getNumRuns(player) - getNumRuns(OTHER(player));
       return val;
+    }
+
+    uint64_t getZobristHash() const {
+      uint64_t hash = 0;
+      for (const auto& p : getPieces(Player::WHITE)) {
+        const int x = p.x - 1;
+        const int y = p.y - 1;
+        const int index = y * m_width + x;
+        hash ^= PIECES[static_cast<int>(Player::WHITE)][index];
+      }
+      for (const auto& p : getPieces(Player::BLACK)) {
+        const int x = p.x - 1;
+        const int y = p.y - 1;
+        const int index = y * m_width + x;
+        hash ^= PIECES[static_cast<int>(Player::BLACK)][index];
+      }
+      if (m_currTurn == Player::BLACK) {
+        hash ^= SIDE;
+      }
+      return hash;
     }
 
     uint64_t getHash(const Player player) const {
@@ -411,6 +455,7 @@ class State {
 
   private:
     vector<Piece> m_pieces[2];
+    Player m_currTurn;
     int m_width;
     int m_height;
 };
