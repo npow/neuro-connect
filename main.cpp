@@ -3,7 +3,6 @@
 #include <limits>
 #include <memory>
 #include <random>
-#include <set>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <unordered_set>
@@ -149,19 +148,24 @@ class Game {
       else {
         // now it's the other player's turn
         int bestVal = -numeric_limits<int>::max();
+        int maxab = alpha;
         vector<Move> moves = s.getMoves(OTHER(player));
         for (auto& move : moves) {
           pushState(s);
 
           assert(s.move(move.x, move.y, move.dir, true));
-          int val = evaluate(s, OTHER(player), currDepth-1, -beta, -alpha);
-          bestVal = max(bestVal, val);
-          alpha = max(alpha, val);
+          int goodness = evaluate(s, OTHER(player), currDepth-1, -beta, -alpha);
+          if (goodness > bestVal) {
+            bestVal = goodness;
+            if (bestVal > maxab) {
+              maxab = bestVal;
+            }
+          }
 
           s = popState();
 
 #if USE_AB_PRUNING
-          if (alpha > beta) {
+          if (bestVal > beta) {
             break;
           }
 #endif
