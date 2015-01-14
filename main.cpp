@@ -6,6 +6,7 @@
 #include <set>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <unordered_set>
 #include <State.h>
 using namespace std;
 
@@ -58,6 +59,10 @@ class Game {
       currState = state;
     }
 
+    const State& getCurrState() const {
+      return currState;
+    }
+
     bool checkIsGameDrawn(const State& s) const {
       int i = 0;
       int numRepeat[2] = { 0, 0 };
@@ -93,6 +98,7 @@ class Game {
           break;
         } else {
           goodness = evaluate(currState, currTurn, maxDepth, -numeric_limits<int>::max(), -bestWorst);
+          cout << move.toString() << ", goodness: " << goodness << endl;
           if (goodness > bestWorst) {
             bestWorst = goodness;
             bestMove = make_shared<Move>(move);
@@ -110,12 +116,31 @@ class Game {
       return bestMove;
     }
 
-    int evaluate(State& s, const Player player, const int currDepth, int alpha, const int beta) {
+    int evaluate(State& s, const Player player, const int currDepth, int alpha, int beta) {
+      const int alphaOrig = alpha;
+      const uint64_t hash = s.getZobristHash();
+      const auto& it = stateMap.find(hash);
+      if (it != stateMap.end()) {
+        if (abs(it->second.bestValue) > 100000) {
+          return it->second.bestValue;
+        } else if (it->second.depth >= currDepth) {
+          if (it->second.flag == Flag::EXACT) {
+            return it->second.bestValue;
+          } else if (it->second.flag == Flag::LOWERBOUND) {
+            alpha = max(alpha, it->second.bestValue);
+          } else if (it->second.flag == Flag::UPPERBOUND) {
+            beta = min(beta, it->second.bestValue);
+          }
+          if (alpha > beta) {
+            return it->second.bestValue;
+          }
+        }
+      }
       if (s.hasPlayerWon(player)) {
-        return numeric_limits<int>::max() - currDepth;
+        return numeric_limits<int>::max() + currDepth - maxDepth;
       }
       else if (s.hasPlayerWon(OTHER(player))) {
-        return -(numeric_limits<int>::max() - currDepth);
+        return -(numeric_limits<int>::max() + currDepth - maxDepth);
       } else if (checkIsGameDrawn(s)) {
         return 0;
       } else if (currDepth == 0) {
@@ -142,6 +167,18 @@ class Game {
 #endif
         }
 
+        Data d;
+        d.bestValue = -bestVal;
+        d.depth = currDepth;
+        if (d.bestValue <= alphaOrig) {
+          d.flag = Flag::UPPERBOUND;
+        } else if (d.bestValue >= beta) {
+          d.flag = Flag::LOWERBOUND;
+        } else {
+          d.flag = Flag::EXACT;
+        }
+        stateMap[hash] = d;
+
         return -bestVal;
       }
     }
@@ -163,6 +200,7 @@ class Game {
     State currState;
     Player currTurn;
     vector<State> history;
+    StateMap_t stateMap;
 };
 
 static void dumpStateMap(const int width, const int height, const StateMap_t& stateMap, const string& fileName) {
@@ -251,7 +289,7 @@ static void generateStates(const int width, const int height) {
   vector<bool> v(n);
   fill(v.begin() + n - r, v.end(), true);
 
-  vector<uint64_t> states;
+  unordered_set<uint64_t> states;
   states.reserve(8817900);
   do {
     vector<Piece> pieces;
@@ -279,13 +317,11 @@ static void generateStates(const int width, const int height) {
 
       State s(width, height);
       s.setPieces(whitePieces, blackPieces);
-      uint64_t hash = s.getHash(Player::WHITE);
-      states.push_back(hash);
+      states.insert(s.getZobristHash());
 
-      State s1(width, height);
-      s1.fromHash(hash);
-      assert(hash == s1.getHash(Player::WHITE));
-      assert(s == s1);
+
+      s.setCurrTurn(Player::BLACK);
+      states.insert(s.getZobristHash());
     }
   } while (next_permutation(v.begin(), v.end()));
   stringstream ss;
@@ -377,24 +413,25 @@ int main(int argc, char* const argv[]) {
   const Player player = isWhite ? Player::WHITE : Player::BLACK;
   while (game.getWinner() == Player::NONE) {
     cout << endl << endl << "turn#: " << game.getNumTurns() << (game.getCurrTurn() == Player::WHITE ? " (W)" : " (B)") << endl;
+    game.getCurrState().print();
     Timer t;
     if (game.getCurrTurn() == player) {
       shared_ptr<Move> bestMove = game.getBestMove();
       string res = "N/A";
       if (bestMove) {
         res = bestMove->toString();
+        cout << res << endl;
         game.move(res, true);
       }
-      cout << res << endl;
     } else {
       if (isAuto) {
         shared_ptr<Move> bestMove = game.getBestMove();
         string res = "N/A";
         if (bestMove) {
           res = bestMove->toString();
+          cout << res << endl;
           game.move(res, true);
         }
-        cout << res << endl;
       } else {
         string cmd;
         cin >> cmd;

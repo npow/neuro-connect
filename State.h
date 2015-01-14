@@ -199,6 +199,10 @@ class State {
       return m_currTurn;
     }
 
+    void setCurrTurn(const Player player) {
+      m_currTurn = player;
+    }
+
     int getWidth() const {
       return m_width;
     }
@@ -312,7 +316,7 @@ class State {
 
     int getGoodness(const Player player) const {
       const int val = getNumRuns(player) - getNumRuns(OTHER(player));
-      return val;
+      return 100 * val;
     }
 
     uint64_t getZobristHash() const {
@@ -389,28 +393,43 @@ class State {
 
     bool hasPlayerWon(const vector<Piece>& pieces) const {
       const auto& ps = getCombinations_4_3();
-      for (const auto& p : ps) {
-        if (isConnected(pieces[p[0]], pieces[p[1]], pieces[p[2]])) {
+      int board[6][7] = {
+        { 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0 }
+      };
+      for (const auto& p : pieces) {
+        const int x = p.x - 1;
+        const int y = p.y - 1;
+        board[y][x] = 1;
+      }
+      for (int y = 1; y <= 4; ++y) {
+        for (int x = 1; x <= 5; ++x) {
+          if (!board[y][x]) continue;
+          if ((board[y+1][x+1] && board[y-1][x-1]) ||
+              (board[y+1][x-1] && board[y-1][x+1]) ||
+              (board[y][x-1] && board[y][x+1]) ||
+              (board[y-1][x] && board[y+1][x])) {
+            return true;
+          }
+        }
+      }
+      for (int y = 1; y <= 4; ++y) {
+        if ((board[y][0] && board[y-1][0] && board[y+1][0]) ||
+            (board[y][m_width-1] && board[y-1][m_width-1] && board[y+1][m_width-1])) {
+          return true;
+        }
+      }
+      for (int x = 1; x <= 5; ++x) {
+        if ((board[0][x] && board[0][x-1] && board[0][x+1]) ||
+            (board[m_height-1][x] && board[m_height-1][x-1] && board[m_height-1][x+1])) {
           return true;
         }
       }
       return false;
-    }
-
-    bool isConnected(const Piece& A, const Piece& B, const Piece& C) const {
-      if (!isCollinear(A.x, A.y, B.x, B.y, C.x, C.y)) {
-        return false;
-      }
-      return (isAdjacent(A.x, A.y, B.x, B.y) && isAdjacent(B.x, B.y, C.x, C.y)) ||
-             (isAdjacent(A.x, A.y, C.x, C.y) && isAdjacent(C.x, C.y, B.x, B.y)) ||
-             (isAdjacent(C.x, C.y, A.x, A.y) && isAdjacent(A.x, A.y, B.x, B.y)) ||
-             (isDiagonallyAdjacent(A.x, A.y, B.x, B.y) && isDiagonallyAdjacent(B.x, B.y, C.x, C.y)) ||
-             (isDiagonallyAdjacent(A.x, A.y, C.x, C.y) && isDiagonallyAdjacent(C.x, C.y, B.x, B.y)) ||
-             (isDiagonallyAdjacent(C.x, C.y, A.x, A.y) && isDiagonallyAdjacent(A.x, A.y, B.x, B.y));
-    }
-
-    bool isCollinear(int x1, int y1, int x2, int y2, int x3, int y3) const {
-      return (y1 - y2) * (x1 - x3) == (y1 - y3) * (x1 - x2);
     }
 
     bool isAdjacent(const int x1, const int y1, const int x2, const int y2) const {
