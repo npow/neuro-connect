@@ -1,7 +1,6 @@
 #ifndef INCLUDED_STATE_H
 #define INCLUDED_STATE_H
 
-
 #include <algorithm>
 #include <bitset>
 #include <cassert>
