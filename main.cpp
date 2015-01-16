@@ -187,6 +187,14 @@ class Game {
       }
     }
 
+    void setStateMap(const StateMap_t& stateMap) {
+      this->stateMap = stateMap;
+    }
+
+    const StateMap_t& getStateMap() const {
+      return stateMap;
+    }
+
   private:
     void pushState(const State& s) {
       history.push_back(s);
@@ -219,21 +227,25 @@ static void dumpStateMap(const int width, const int height, const StateMap_t& st
 }
 
 static StateMap_t loadStateMap(const std::string& fileName) {
+  cout << fileName << endl;
   StateMap_t stateMap;
-  ifstream in("combined_statemap");
-  while (!in.eof()) {
+  ifstream in(fileName);
+  string line;
+  while (getline(in, line)) {
     uint64_t hash = 0;
-    Data d;
     int goodness = 0;
     int flag;
-    in >> hash >> d.depth >> d.bestValue >> d.alpha >> d.beta >> flag;
+    Data d;
+    stringstream ss(line);
+    ss >> hash >> d.depth >> d.bestValue >> d.alpha >> d.beta >> flag;
     d.flag = static_cast<Flag>(flag);
-    if (!hash) {
+    if (hash) {
       stateMap[hash] = d;
     }
   }
   in.close();
 
+  cout << "Done loading statemap: " << stateMap.size() << endl;
   return stateMap;
 }
 
@@ -254,26 +266,18 @@ static int countDraws(const StateMap_t& stateMap) {
 }
 
 static void populateStates(const int width, const int height, const int maxDepth, const std::string& fileName) {
-  cout << fileName << endl;
-  if (!fileExists(fileName)) {
-    cout << "File not found: " << fileName << endl;
-    return;
-  }
-
-  StateMap_t stateMap = loadStateMap(fileName);
-  cout << "Before: " << countDraws(stateMap) << endl;
-
+  uint64_t hash = 0;
   int numStates = 0;
-  for (auto& p : stateMap) {
-    if (abs(p.second.bestValue) > 100000) { // either a win or loss
-      continue;
-    }
+  Game game(width, height, maxDepth);
+  StateMap_t savedStateMap = loadStateMap("statemap_5_4.txt_statemap");
+  game.setStateMap(savedStateMap);
+  ifstream in("states_5_4.txt");
+  while (in >> hash) {
     State s(width, height);
-    s.fromHash(p.first);
+    s.fromHash(hash);
 
-    Game game(width, height, maxDepth);
     game.setCurrState(s);
-    p.second.bestValue = game.evaluate(s, Player::WHITE, maxDepth, -numeric_limits<int>::max(), numeric_limits<int>::max());
+    game.evaluate(s, Player::WHITE, maxDepth, -numeric_limits<int>::max(), numeric_limits<int>::max());
 
 #if 1
     numStates++;
@@ -283,8 +287,9 @@ static void populateStates(const int width, const int height, const int maxDepth
 #endif
   }
 
+  const StateMap_t& stateMap = game.getStateMap();
   cout << "After: " << countDraws(stateMap) << endl;
-  dumpStateMap(width, height, stateMap, fileName);
+  dumpStateMap(width, height, stateMap, "statemap_5_4.txt");
 }
 
 static void generateStates(const int width, const int height) {
@@ -321,11 +326,7 @@ static void generateStates(const int width, const int height) {
 
       State s(width, height);
       s.setPieces(whitePieces, blackPieces);
-      states.insert(s.getZobristHash());
-
-
-      s.setCurrTurn(Player::BLACK);
-      states.insert(s.getZobristHash());
+      states.insert(s.getHash(Player::WHITE));
     }
   } while (next_permutation(v.begin(), v.end()));
   stringstream ss;
@@ -337,14 +338,51 @@ static void generateStates(const int width, const int height) {
   out.close();
 }
 
+void createTrainData(const int width, const int height, const std::string& fileName) {
+  ofstream out("train.dat");
+  StateMap_t savedStateMap = loadStateMap(fileName);
+  out << savedStateMap.size() << " 42 1" << endl;
+  for (const auto& d : savedStateMap) {
+    int board[6][7] = {
+      { 0, 0, 0, 0, 0, 0, 0 },
+      { 0, 0, 0, 0, 0, 0, 0 },
+      { 0, 0, 0, 0, 0, 0, 0 },
+      { 0, 0, 0, 0, 0, 0, 0 },
+      { 0, 0, 0, 0, 0, 0, 0 },
+      { 0, 0, 0, 0, 0, 0, 0 }
+    };
+    State s(width, height);
+    s.fromHash(d.first);
+
+    for (const auto& p : s.getPieces(Player::WHITE)) {
+      const int x = p.x - 1;
+      const int y = p.y - 1;
+      board[y][x] = 1;
+    }
+
+    for (const auto& p : s.getPieces(Player::BLACK)) {
+      const int x = p.x - 1;
+      const int y = p.y - 1;
+      board[y][x] = 2;
+    }
+
+    for (int i = 0; i < 6; ++i) {
+      for (int j = 0; j < 7; ++j) {
+        out << board[i][j] << " ";
+      }
+    }
+    out << endl << (d.second.bestValue > 100000 ? 0 : (d.second.bestValue < 100000 ? 1 : 2)) << endl;
+  }
+  out.close();
+}
+
+void trainNeuralNet(const std::string& fileName) {
+
+}
+
 void runTests(const int width, const int height, const std::string& fileName) {
-  State s(width, height);
-  uint64_t hash = s.getHash(Player::WHITE);
-  cout << hash << endl;
-  s.print();
-  State s1(width, height);
-  s1.fromHash(hash);
-  s1.print();
+  //createTrainData(width, height, fileName);
+  trainNeuralNet(fileName);
 }
 
 int main(int argc, char* const argv[]) {
@@ -442,7 +480,6 @@ int main(int argc, char* const argv[]) {
         cout << "Got: " << cmd << endl;
         if (!game.move(cmd, false)) {
           cout << "Invalid move: " << cmd << endl;
-          break;
         }
       }
     }

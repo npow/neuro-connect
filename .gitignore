@@ -1,5 +1,6 @@
 *.d
 *.o
+*.dat
 *.txt
 main
 data/
