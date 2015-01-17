@@ -377,11 +377,16 @@ void createTrainData(const int width, const int height, const std::string& fileN
       board[y][x] = 2;
     }
 
+    int numPieces = 0;
     for (int i = 0; i < height; ++i) {
       for (int j = 0; j < width; ++j) {
+        if (board[i][j] == 1 || board[i][j] == 2) {
+          numPieces++;
+        }
         out << (board[i][j] == 1 ? "0 1" : (board[i][j] == 2 ? "1 0" : "0 0")) << (i == (height-1) && j == (width-1) ? "" : " ");
       }
     }
+    assert(numPieces == NUM_PIECES_PER_SIDE*2);
     out << endl;
     out << (d.second.bestValue > 100000 ? "1 0 0" : (d.second.bestValue < -100000 ? "0 1 0" : "0 0 1")) << endl;
   }

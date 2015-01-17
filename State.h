@@ -342,16 +342,16 @@ class State {
         const int x = p.x - 1;
         const int y = p.y - 1;
         const int index = y * m_width + x;
-        whiteHash |= (2 << index);
+        whiteHash |= (1 << index);
       }
-      int blackHash = 0;
+      int64_t blackHash = 0;
       for (const auto& p : getPieces(OTHER(player))) {
         const int x = p.x - 1;
         const int y = p.y - 1;
         const int index = y * m_width + x;
-        blackHash |= (2 << index);
+        blackHash |= (1 << index);
       }
-      return (whiteHash << 32) ^ blackHash;
+      return (whiteHash << 32) | blackHash;
     }
 
     void fromHash(const int64_t hash) {
@@ -362,12 +362,12 @@ class State {
       int blackHash = static_cast<int>(hash);
       int whiteHash = static_cast<int>(hash >> 32);
       for (int i = 0; i < m_width * m_height; ++i) {
-        const long key = (2 << i);
-        if ((blackHash & key) >> i) {
+        const long key = (1 << i);
+        if (blackHash & key) {
           const int x = (i % m_width) + 1;
           const int y = (i / m_width) + 1;
           blackPieces.push_back(Piece(x, y));
-        } else if (((hash >> 32) & key) >> i) {
+        } else if ((hash >> 32) & key) {
           const int x = (i % m_width) + 1;
           const int y = (i / m_width) + 1;
           whitePieces.push_back(Piece(x, y));
