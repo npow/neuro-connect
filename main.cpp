@@ -226,7 +226,7 @@ static void dumpStateMap(const int width, const int height, const StateMap_t& st
   ofstream out(ss.str());
   for (const auto& p : stateMap) {
     out << p.first << " " << p.second.depth << " " << p.second.bestValue
-        << " " << p.second.alpha << " " << p.second.beta << p.second.flag << endl;
+        << " " << p.second.alpha << " " << p.second.beta << " " << p.second.flag << endl;
   }
   out.close();
 }
@@ -352,7 +352,7 @@ void createTrainData(const int width, const int height, const std::string& fileN
     out << ",x" << (i+1);
   }
 #endif
-  out << savedStateMap.size() << " 20 1" << endl;
+  out << savedStateMap.size() << " 40 3" << endl;
   for (const auto& d : savedStateMap) {
     int board[4][5] = {
       { 0, 0, 0, 0, 0 },
@@ -377,11 +377,11 @@ void createTrainData(const int width, const int height, const std::string& fileN
 
     for (int i = 0; i < height; ++i) {
       for (int j = 0; j < width; ++j) {
-        out << board[i][j] << (i == (height-1) && j == (width-1) ? "" : " ");
+        out << (board[i][j] == 1 ? "0 1" : (board[i][j] == 2 ? "1 0" : "0 0")) << (i == (height-1) && j == (width-1) ? "" : " ");
       }
     }
     out << endl;
-    out << (d.second.bestValue > 100000 ? 0 : (d.second.bestValue < -100000 ? 1 : 2)) << endl;
+    out << (d.second.bestValue > 100000 ? "1 0 0" : (d.second.bestValue < -100000 ? "0 1 0" : "0 0 1")) << endl;
   }
   out.close();
 }
@@ -396,8 +396,9 @@ static int print_callback(FANN::neural_net &net, FANN::training_data &train,
 }
 
 void trainNeuralNet(const std::string& fileName) {
-  const float learning_rate = 0.7f;
-  const unsigned int layers[6] = { 20, 40, 20, 10, 5, 1 };
+  const float learning_rate = 0.01f;
+  const float learning_momentum = 0.9f;
+  const unsigned int layers[6] = { 40, 80, 40, 20, 10, 3 };
   const float desired_error = 0.0000001f;
   const unsigned int max_iterations = 5;
   const unsigned int iterations_between_reports = 1;
@@ -406,14 +407,12 @@ void trainNeuralNet(const std::string& fileName) {
 
   FANN::neural_net net;
   net.create_standard_array(6, layers);
-
+  net.set_training_algorithm(FANN::TRAIN_BATCH);
   net.set_learning_rate(learning_rate);
-
-  net.set_activation_steepness_hidden(1.0);
-  net.set_activation_steepness_output(1.0);
-
+  net.set_learning_momentum(learning_momentum);
   net.set_activation_function_hidden(FANN::SIGMOID_SYMMETRIC_STEPWISE);
   net.set_activation_function_output(FANN::SIGMOID_SYMMETRIC_STEPWISE);
+
   cout << endl << "Network Type                         :  ";
   switch (net.get_network_type())
   {
@@ -431,20 +430,20 @@ void trainNeuralNet(const std::string& fileName) {
 
   FANN::training_data data;
   if (data.read_train_from_file(fileName)) {
-      net.init_weights(data);
+    net.init_weights(data);
 
-      cout << "Max Epochs " << setw(8) << max_iterations << ". "
-          << "Desired Error: " << left << desired_error << right << endl;
-      net.set_callback(print_callback, NULL);
-      net.train_on_data(data, max_iterations, iterations_between_reports, desired_error);
+    cout << "Max Epochs " << setw(8) << max_iterations << ". "
+      << "Desired Error: " << left << desired_error << right << endl;
+    net.set_callback(print_callback, NULL);
+    net.train_on_data(data, max_iterations, iterations_between_reports, desired_error);
 
-      net.save("neuroconnect.net");
+    net.save("neuroconnect_5_4.net");
   }
 }
 
 void runTests(const int width, const int height, const std::string& fileName) {
-  //createTrainData(width, height, fileName);
-  trainNeuralNet(fileName);
+  createTrainData(width, height, fileName);
+  //trainNeuralNet(fileName);
 }
 
 int main(int argc, char* const argv[]) {

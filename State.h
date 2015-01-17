@@ -367,7 +367,7 @@ class State {
           const int x = (i % m_width) + 1;
           const int y = (i / m_width) + 1;
           blackPieces.push_back(Piece(x, y));
-        } else if (((hash >> 32) & key) >> (i + 1)) {
+        } else if (((hash >> 32) & key) >> i) {
           const int x = (i % m_width) + 1;
           const int y = (i / m_width) + 1;
           whitePieces.push_back(Piece(x, y));
