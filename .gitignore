@@ -5,3 +5,6 @@
 main
 data/
 *statemap*
+*.csv
+.ipynb_checkpoints
+*.ipynb
