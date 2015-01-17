@@ -29,7 +29,8 @@ struct Data {
   int bestValue;
   Flag flag;
 };
-typedef unordered_map<int64_t, Data> StateMap_t;
+typedef bitset<40> Hash_t;
+typedef unordered_map<Hash_t, Data> StateMap_t;
 
 #define NUM_PIECES_PER_SIDE 4
 #define WHITE_CHAR '0'
@@ -336,41 +337,40 @@ class State {
       return hash;
     }
 
-    int64_t getHash(const Player player) const {
-      int64_t whiteHash = 0;
+    Hash_t getHash(const Player player) const {
+      const int boardSize = m_width * m_height;
+      Hash_t hash;
       for (const auto& p : getPieces(player)) {
         const int x = p.x - 1;
         const int y = p.y - 1;
         const int index = y * m_width + x;
-        whiteHash |= (1 << index);
+        hash[index+boardSize] = 1;
       }
-      int64_t blackHash = 0;
       for (const auto& p : getPieces(OTHER(player))) {
         const int x = p.x - 1;
         const int y = p.y - 1;
         const int index = y * m_width + x;
-        blackHash |= (1 << index);
+        hash[index] = 1;
       }
-      return (whiteHash << 32) | blackHash;
+      return hash;
     }
 
-    void fromHash(const int64_t hash) {
+    void fromHash(const Hash_t& hash) {
+      const int boardSize = m_width * m_height;
       auto& whitePieces = getPieces(Player::WHITE);
       auto& blackPieces = getPieces(Player::BLACK);
       whitePieces.clear();
       blackPieces.clear();
-      int blackHash = static_cast<int>(hash);
-      int whiteHash = static_cast<int>(hash >> 32);
-      for (int i = 0; i < m_width * m_height; ++i) {
-        const long key = (1 << i);
-        if (blackHash & key) {
-          const int x = (i % m_width) + 1;
-          const int y = (i / m_width) + 1;
-          blackPieces.push_back(Piece(x, y));
-        } else if ((hash >> 32) & key) {
+      for (int i = 0; i < boardSize; ++i) {
+        if (hash[i+boardSize]) {
           const int x = (i % m_width) + 1;
           const int y = (i / m_width) + 1;
           whitePieces.push_back(Piece(x, y));
+        }
+        if (hash[i]) {
+          const int x = (i % m_width) + 1;
+          const int y = (i / m_width) + 1;
+          blackPieces.push_back(Piece(x, y));
         }
       }
     }

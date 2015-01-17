@@ -223,7 +223,7 @@ class Game {
 static void dumpStateMap(const int width, const int height, const StateMap_t& stateMap, const string& fileName) {
   ofstream out(fileName.c_str());
   for (const auto& p : stateMap) {
-    out << p.first << " " << p.second.depth << " " << p.second.bestValue
+    out << p.first.to_ulong() << " " << p.second.depth << " " << p.second.bestValue
         << " " << static_cast<int>(p.second.flag) << endl;
   }
   out.close();
@@ -235,14 +235,15 @@ static StateMap_t loadStateMap(const std::string& fileName) {
   ifstream in(fileName);
   string line;
   while (getline(in, line)) {
-    int64_t hash = 0;
+    unsigned long h = 0;
     int goodness = 0;
     int flag;
     Data d;
     stringstream ss(line);
-    ss >> hash >> d.depth >> d.bestValue >> flag;
+    ss >> h >> d.depth >> d.bestValue >> flag;
+    Hash_t hash(h);
     d.flag = static_cast<Flag>(flag);
-    if (hash) {
+    if (h) {
       stateMap[hash] = d;
     }
   }
@@ -269,14 +270,15 @@ static int countDraws(const StateMap_t& stateMap) {
 }
 
 static void populateStates(const int width, const int height, const int maxDepth, const std::string& fileName) {
-  int64_t hash = 0;
+  unsigned long h = 0;
   int numStates = 0;
   Game game(width, height, maxDepth);
   StateMap_t savedStateMap = loadStateMap(fileName+"_statemap");
   game.setStateMap(savedStateMap);
   ifstream in(fileName.c_str());
-  while (in >> hash) {
+  while (in >> h) {
     State s(width, height);
+    Hash_t hash(h);
     s.fromHash(hash);
 
     game.setCurrState(s);
@@ -301,7 +303,7 @@ static void generateStates(const int width, const int height) {
   vector<bool> v(n);
   fill(v.begin() + n - r, v.end(), true);
 
-  unordered_set<int64_t> states;
+  unordered_set<Hash_t> states;
   states.reserve(8817900);
   do {
     vector<Piece> pieces;
@@ -329,18 +331,19 @@ static void generateStates(const int width, const int height) {
 
       State s(width, height);
       s.setPieces(whitePieces, blackPieces);
-      states.insert(s.getHash(Player::WHITE));
 
       State s1(width, height);
       s1.fromHash(s.getHash(Player::WHITE));
       assert(s == s1);
+
+      states.insert(s.getHash(Player::WHITE));
     }
   } while (next_permutation(v.begin(), v.end()));
   stringstream ss;
   ss << "states_" << width << "_" << height << ".txt";
   ofstream out(ss.str());
   for (const auto& s : states) {
-    out << s << endl;
+    out << s.to_ulong() << endl;
   }
   out.close();
 }
