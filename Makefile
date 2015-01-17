@@ -3,7 +3,7 @@
 all: main
 
 UNAME := $(shell uname)
-REDIS_CLIENT = $(HOME)/code/redis-cplusplus-client
+FANN_HOME = ./fann
 
 ifeq ($(UNAME), Linux)
 CXX = g++-4.6
@@ -11,11 +11,8 @@ else
 CXX = g++-4.9
 endif
 
-CXX_FLAGS=-I. -std=c++0x -MMD -O0
-LD_FLAGS = -lstdc++ -lpthread -lboost_thread-mt
-ifeq ($(USE_REDIS), 1)
-LD_FLAGS += -L$(REDIS_CLIENT) -lredisclient
-endif
+CXX_FLAGS=-I. -I$(FANN_HOME)/include -std=c++0x -MMD -O0
+LD_FLAGS = -L$(FANN_HOME)/lib -lfann -lstdc++ -lpthread -lboost_thread-mt
 
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)

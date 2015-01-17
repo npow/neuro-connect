@@ -1,5 +1,6 @@
 #include <cassert>
 #include <fstream>
+#include <iomanip>
 #include <limits>
 #include <memory>
 #include <random>
@@ -7,6 +8,10 @@
 #include <unistd.h>
 #include <unordered_set>
 #include <State.h>
+
+#include "doublefann.h"
+#include "fann_cpp.h"
+
 using namespace std;
 
 #define USE_AB_PRUNING 1
@@ -341,15 +346,19 @@ static void generateStates(const int width, const int height) {
 void createTrainData(const int width, const int height, const std::string& fileName) {
   ofstream out("train.dat");
   StateMap_t savedStateMap = loadStateMap(fileName);
-  out << savedStateMap.size() << " 42 1" << endl;
+#if 0
+  out << "y";
+  for (int i = 0; i < 20; ++i) {
+    out << ",x" << (i+1);
+  }
+#endif
+  out << savedStateMap.size() << " 20 1" << endl;
   for (const auto& d : savedStateMap) {
-    int board[6][7] = {
-      { 0, 0, 0, 0, 0, 0, 0 },
-      { 0, 0, 0, 0, 0, 0, 0 },
-      { 0, 0, 0, 0, 0, 0, 0 },
-      { 0, 0, 0, 0, 0, 0, 0 },
-      { 0, 0, 0, 0, 0, 0, 0 },
-      { 0, 0, 0, 0, 0, 0, 0 }
+    int board[4][5] = {
+      { 0, 0, 0, 0, 0 },
+      { 0, 0, 0, 0, 0 },
+      { 0, 0, 0, 0, 0 },
+      { 0, 0, 0, 0, 0 }
     };
     State s(width, height);
     s.fromHash(d.first);
@@ -366,18 +375,71 @@ void createTrainData(const int width, const int height, const std::string& fileN
       board[y][x] = 2;
     }
 
-    for (int i = 0; i < 6; ++i) {
-      for (int j = 0; j < 7; ++j) {
-        out << board[i][j] << " ";
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < width; ++j) {
+        out << board[i][j] << (i == (height-1) && j == (width-1) ? "" : " ");
       }
     }
-    out << endl << (d.second.bestValue > 100000 ? 0 : (d.second.bestValue < 100000 ? 1 : 2)) << endl;
+    out << endl;
+    out << (d.second.bestValue > 100000 ? 0 : (d.second.bestValue < -100000 ? 1 : 2)) << endl;
   }
   out.close();
 }
 
-void trainNeuralNet(const std::string& fileName) {
+static int print_callback(FANN::neural_net &net, FANN::training_data &train,
+    unsigned int max_epochs, unsigned int epochs_between_reports,
+    float desired_error, unsigned int epochs, void *user_data)
+{
+    cout << "Epochs     " << setw(8) << epochs << ". "
+         << "Current Error: " << left << net.get_MSE() << right << endl;
+    return 0;
+}
 
+void trainNeuralNet(const std::string& fileName) {
+  const float learning_rate = 0.7f;
+  const unsigned int layers[6] = { 20, 40, 20, 10, 5, 1 };
+  const float desired_error = 0.0000001f;
+  const unsigned int max_iterations = 5;
+  const unsigned int iterations_between_reports = 1;
+
+  cout << endl << "Creating network." << endl;
+
+  FANN::neural_net net;
+  net.create_standard_array(6, layers);
+
+  net.set_learning_rate(learning_rate);
+
+  net.set_activation_steepness_hidden(1.0);
+  net.set_activation_steepness_output(1.0);
+
+  net.set_activation_function_hidden(FANN::SIGMOID_SYMMETRIC_STEPWISE);
+  net.set_activation_function_output(FANN::SIGMOID_SYMMETRIC_STEPWISE);
+  cout << endl << "Network Type                         :  ";
+  switch (net.get_network_type())
+  {
+    case FANN::LAYER:
+      cout << "LAYER" << endl;
+      break;
+    case FANN::SHORTCUT:
+      cout << "SHORTCUT" << endl;
+      break;
+    default:
+      cout << "UNKNOWN" << endl;
+      break;
+  }
+  net.print_parameters();
+
+  FANN::training_data data;
+  if (data.read_train_from_file(fileName)) {
+      net.init_weights(data);
+
+      cout << "Max Epochs " << setw(8) << max_iterations << ". "
+          << "Desired Error: " << left << desired_error << right << endl;
+      net.set_callback(print_callback, NULL);
+      net.train_on_data(data, max_iterations, iterations_between_reports, desired_error);
+
+      net.save("neuroconnect.net");
+  }
 }
 
 void runTests(const int width, const int height, const std::string& fileName) {
