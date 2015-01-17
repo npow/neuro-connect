@@ -122,7 +122,7 @@ class Game {
 
     int evaluate(State& s, const Player player, const int currDepth, int alpha, int beta) {
       const int alphaOrig = alpha;
-      const uint64_t hash = s.getZobristHash();
+      const int64_t hash = s.getZobristHash();
       const auto& it = stateMap.find(hash);
       if (it != stateMap.end()) {
         if (abs(it->second.bestValue) > 100000) {
@@ -221,28 +221,26 @@ class Game {
 };
 
 static void dumpStateMap(const int width, const int height, const StateMap_t& stateMap, const string& fileName) {
-  stringstream ss;
-  ss << fileName << "_statemap";
-  ofstream out(ss.str());
+  ofstream out(fileName.c_str());
   for (const auto& p : stateMap) {
     out << p.first << " " << p.second.depth << " " << p.second.bestValue
-        << " " << p.second.alpha << " " << p.second.beta << " " << p.second.flag << endl;
+        << " " << static_cast<int>(p.second.flag) << endl;
   }
   out.close();
 }
 
 static StateMap_t loadStateMap(const std::string& fileName) {
-  cout << fileName << endl;
+  cout << "Loading statemap: " << fileName << endl;
   StateMap_t stateMap;
   ifstream in(fileName);
   string line;
   while (getline(in, line)) {
-    uint64_t hash = 0;
+    int64_t hash = 0;
     int goodness = 0;
     int flag;
     Data d;
     stringstream ss(line);
-    ss >> hash >> d.depth >> d.bestValue >> d.alpha >> d.beta >> flag;
+    ss >> hash >> d.depth >> d.bestValue >> flag;
     d.flag = static_cast<Flag>(flag);
     if (hash) {
       stateMap[hash] = d;
@@ -271,12 +269,12 @@ static int countDraws(const StateMap_t& stateMap) {
 }
 
 static void populateStates(const int width, const int height, const int maxDepth, const std::string& fileName) {
-  uint64_t hash = 0;
+  int64_t hash = 0;
   int numStates = 0;
   Game game(width, height, maxDepth);
-  StateMap_t savedStateMap = loadStateMap("statemap_5_4.txt_statemap");
+  StateMap_t savedStateMap = loadStateMap(fileName+"_statemap");
   game.setStateMap(savedStateMap);
-  ifstream in("states_5_4.txt");
+  ifstream in(fileName.c_str());
   while (in >> hash) {
     State s(width, height);
     s.fromHash(hash);
@@ -294,7 +292,7 @@ static void populateStates(const int width, const int height, const int maxDepth
 
   const StateMap_t& stateMap = game.getStateMap();
   cout << "After: " << countDraws(stateMap) << endl;
-  dumpStateMap(width, height, stateMap, "statemap_5_4.txt");
+  dumpStateMap(width, height, stateMap, fileName+"_statemap");
 }
 
 static void generateStates(const int width, const int height) {
@@ -303,7 +301,7 @@ static void generateStates(const int width, const int height) {
   vector<bool> v(n);
   fill(v.begin() + n - r, v.end(), true);
 
-  unordered_set<uint64_t> states;
+  unordered_set<int64_t> states;
   states.reserve(8817900);
   do {
     vector<Piece> pieces;
@@ -332,6 +330,10 @@ static void generateStates(const int width, const int height) {
       State s(width, height);
       s.setPieces(whitePieces, blackPieces);
       states.insert(s.getHash(Player::WHITE));
+
+      State s1(width, height);
+      s1.fromHash(s.getHash(Player::WHITE));
+      assert(s == s1);
     }
   } while (next_permutation(v.begin(), v.end()));
   stringstream ss;
