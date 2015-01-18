@@ -122,7 +122,7 @@ class Game {
 
     int evaluate(State& s, const Player player, const int currDepth, int alpha, int beta) {
       const int alphaOrig = alpha;
-      const Hash_t hash = s.getHash(player);
+      const Hash_t hash = s.getHash();
       const auto& it = stateMap.find(hash);
       if (it != stateMap.end()) {
         if (abs(it->second.bestValue) > 100000) {
@@ -333,10 +333,10 @@ static void generateStates(const int width, const int height) {
       s.setPieces(whitePieces, blackPieces);
 
       State s1(width, height);
-      s1.fromHash(s.getHash(Player::WHITE));
-      assert(s == s1);
+      s1.fromHash(s.getHash());
 
-      states.insert(s.getHash(Player::WHITE));
+      assert(s == s1);
+      states.insert(s.getHash());
     }
   } while (next_permutation(v.begin(), v.end()));
   stringstream ss;

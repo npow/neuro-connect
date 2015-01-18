@@ -29,7 +29,7 @@ struct Data {
   int bestValue;
   Flag flag;
 };
-typedef bitset<40> Hash_t;
+typedef bitset<41> Hash_t;
 typedef unordered_map<Hash_t, Data> StateMap_t;
 
 #define NUM_PIECES_PER_SIDE 4
@@ -337,21 +337,22 @@ class State {
       return hash;
     }
 
-    Hash_t getHash(const Player player) const {
+    Hash_t getHash() const {
       const int boardSize = m_width * m_height;
       Hash_t hash;
-      for (const auto& p : getPieces(player)) {
+      for (const auto& p : getPieces(Player::WHITE)) {
         const int x = p.x - 1;
         const int y = p.y - 1;
         const int index = y * m_width + x;
         hash[index+boardSize] = 1;
       }
-      for (const auto& p : getPieces(OTHER(player))) {
+      for (const auto& p : getPieces(Player::BLACK)) {
         const int x = p.x - 1;
         const int y = p.y - 1;
         const int index = y * m_width + x;
         hash[index] = 1;
       }
+      hash[2*boardSize] = m_currTurn == Player::BLACK ? 1 : 0;
       return hash;
     }
 
@@ -373,6 +374,7 @@ class State {
           blackPieces.push_back(Piece(x, y));
         }
       }
+      m_currTurn = hash[2*boardSize] ? Player::BLACK : Player::WHITE;
     }
 
   private:
