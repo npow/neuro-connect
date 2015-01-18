@@ -122,7 +122,7 @@ class Game {
 
     int evaluate(State& s, const Player player, const int currDepth, int alpha, int beta) {
       const int alphaOrig = alpha;
-      const int64_t hash = s.getZobristHash();
+      const Hash_t hash = s.getHash(player);
       const auto& it = stateMap.find(hash);
       if (it != stateMap.end()) {
         if (abs(it->second.bestValue) > 100000) {
