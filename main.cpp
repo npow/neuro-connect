@@ -406,20 +406,22 @@ static int print_callback(FANN::neural_net &net, FANN::training_data &train,
 }
 
 void trainNeuralNet(const std::string& fileName) {
-  const float learning_rate = 0.01f;
+  const float learning_rate = 0.9f;
   const float learning_momentum = 0.9f;
-  const unsigned int layers[6] = { 40, 80, 40, 20, 10, 3 };
-  const float desired_error = 0.0000001f;
-  const unsigned int max_iterations = 5;
+  const unsigned int layers[3] = { 40, 80, 3 };
+  const float desired_error = 0.001f;
+  const unsigned int max_iterations = 1;
   const unsigned int iterations_between_reports = 1;
 
   cout << endl << "Creating network." << endl;
 
   FANN::neural_net net;
-  net.create_standard_array(6, layers);
-  net.set_training_algorithm(FANN::TRAIN_BATCH);
+  net.create_standard_array(sizeof(layers)/sizeof(*layers), layers);
+  net.set_training_algorithm(FANN::TRAIN_QUICKPROP);
   net.set_learning_rate(learning_rate);
   net.set_learning_momentum(learning_momentum);
+  net.set_activation_steepness_hidden(1.0);
+  net.set_activation_steepness_output(1.0);
   net.set_activation_function_hidden(FANN::SIGMOID_SYMMETRIC_STEPWISE);
   net.set_activation_function_output(FANN::SIGMOID_SYMMETRIC_STEPWISE);
 
@@ -452,8 +454,8 @@ void trainNeuralNet(const std::string& fileName) {
 }
 
 void runTests(const int width, const int height, const std::string& fileName) {
-  createTrainData(width, height, fileName);
-  //trainNeuralNet(fileName);
+  //createTrainData(width, height, fileName);
+  trainNeuralNet(fileName);
 }
 
 int main(int argc, char* const argv[]) {
