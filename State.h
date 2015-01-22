@@ -11,13 +11,9 @@
 #include <unordered_map>
 #include <sstream>
 #include <vector>
-#include "Zobrist.h"
-#if USE_REDIS
-#include <redisclient.h>
-#endif
-
 #include "doublefann.h"
 #include "fann_cpp.h"
+#include "Zobrist.h"
 
 using namespace std;
 #define NNET_FILE "neuroconnect_5_4.net"
@@ -26,7 +22,9 @@ static FANN::neural_net& getNeuralNet() {
   static bool isInitialized = false;
   static FANN::neural_net net;
   if (!isInitialized) {
-    net.create_from_file(NNET_FILE);
+    if (!net.create_from_file(NNET_FILE)) {
+      throw "Unable to initialize neural net";
+    }
     isInitialized = true;
   }
   return net;
@@ -52,26 +50,6 @@ typedef unordered_map<Hash_t, Data> StateMap_t;
 #define BLACK_CHAR '1'
 #define OTHER(player) ((player) == Player::WHITE ? Player::BLACK : Player::WHITE)
 #define toInt(c) (c - '0')
-
-#if USE_REDIS
-static boost::shared_ptr<redis::client> init_non_cluster_client() {
-  const char* c_host = getenv("REDIS_HOST");
-  string host = "localhost";
-  if (c_host) {
-    host = c_host;
-  }
-  return boost::shared_ptr<redis::client>(new redis::client(host));
-}
-
-static redis::client& getRedisClient() {
-  static boost::shared_ptr<redis::client> shared_c;
-  if (!shared_c) {
-    shared_c = init_non_cluster_client();
-  }
-  redis::client& c = *shared_c;
-  return c;
-}
-#endif
 
 class Timer {
   public:
@@ -328,7 +306,7 @@ class State {
     }
 
     int getPredictedGoodness(const Player player) const {
-      fann_type input[m_width*m_height*2];
+      fann_type input[20] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
       int board[4][5] = {
         { 0, 0, 0, 0, 0 },
         { 0, 0, 0, 0, 0 },
@@ -349,11 +327,8 @@ class State {
 
       for (int i = 0; i < m_height; ++i) {
         for (int j = 0; j < m_width; ++j) {
-          int index = i*m_width + j;
-          if (board[i][j] == 1) {
-            index += 1;
-          }
-          input[index] = 1;
+          const int index = i*m_width + j;
+          input[index] = board[i][j];
         }
       }
 
@@ -362,8 +337,6 @@ class State {
 
       const fann_type pWin = pred[0];
       const fann_type pLoss = pred[1];
-      free(pred);
-
       return pWin*numeric_limits<int>::max() - pLoss*numeric_limits<int>::max();
     }
 

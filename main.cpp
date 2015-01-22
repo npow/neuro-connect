@@ -281,9 +281,9 @@ static void populateStates(const int width, const int height, const int maxDepth
     game.setCurrState(s);
     game.evaluate(s, Player::WHITE, maxDepth, -numeric_limits<int>::max(), numeric_limits<int>::max());
 
-#if 1
+#ifndef NDEBUG
     numStates++;
-    if (numStates % 500 == 0) {
+    if (numStates % 1000 == 0) {
       cout << numStates << endl;
     }
 #endif
@@ -348,12 +348,6 @@ static void generateStates(const int width, const int height) {
 void createTrainData(const int width, const int height, const std::string& fileName) {
   ofstream out("train.dat");
   StateMap_t savedStateMap = loadStateMap(fileName);
-#if 0
-  out << "y";
-  for (int i = 0; i < 20; ++i) {
-    out << ",x" << (i+1);
-  }
-#endif
   out << savedStateMap.size() << " 20 3" << endl;
   for (const auto& d : savedStateMap) {
     int board[4][5] = {
@@ -414,13 +408,11 @@ void trainNeuralNet(const std::string& fileName) {
 
   FANN::neural_net net;
   net.create_standard_array(sizeof(layers)/sizeof(*layers), layers);
-  net.set_training_algorithm(FANN::TRAIN_QUICKPROP);
+  net.set_training_algorithm(FANN::TRAIN_BATCH);
   net.set_learning_rate(learning_rate);
   net.set_learning_momentum(learning_momentum);
-  net.set_activation_steepness_hidden(1.0);
-  net.set_activation_steepness_output(1.0);
-  net.set_activation_function_hidden(FANN::SIGMOID_SYMMETRIC_STEPWISE);
-  net.set_activation_function_output(FANN::SIGMOID_SYMMETRIC_STEPWISE);
+//  net.set_activation_function_hidden(FANN::SIGMOID_SYMMETRIC_STEPWISE);
+//  net.set_activation_function_output(FANN::SIGMOID_SYMMETRIC_STEPWISE);
 
   cout << endl << "Network Type                         :  ";
   switch (net.get_network_type())
