@@ -9,9 +9,6 @@
 #include <unordered_set>
 #include <State.h>
 
-#include "doublefann.h"
-#include "fann_cpp.h"
-
 using namespace std;
 
 #define USE_AB_PRUNING 1
@@ -357,7 +354,7 @@ void createTrainData(const int width, const int height, const std::string& fileN
     out << ",x" << (i+1);
   }
 #endif
-  out << savedStateMap.size() << " 40 3" << endl;
+  out << savedStateMap.size() << " 20 3" << endl;
   for (const auto& d : savedStateMap) {
     int board[4][5] = {
       { 0, 0, 0, 0, 0 },
@@ -386,7 +383,7 @@ void createTrainData(const int width, const int height, const std::string& fileN
         if (board[i][j] == 1 || board[i][j] == 2) {
           numPieces++;
         }
-        out << (board[i][j] == 1 ? "0 1" : (board[i][j] == 2 ? "1 0" : "0 0")) << (i == (height-1) && j == (width-1) ? "" : " ");
+        out << board[i][j] << (i == (height-1) && j == (width-1) ? "" : " ");
       }
     }
     assert(numPieces == NUM_PIECES_PER_SIDE*2);
@@ -408,7 +405,7 @@ static int print_callback(FANN::neural_net &net, FANN::training_data &train,
 void trainNeuralNet(const std::string& fileName) {
   const float learning_rate = 0.9f;
   const float learning_momentum = 0.9f;
-  const unsigned int layers[3] = { 40, 80, 3 };
+  const unsigned int layers[3] = { 20, 20, 3 };
   const float desired_error = 0.001f;
   const unsigned int max_iterations = 1;
   const unsigned int iterations_between_reports = 1;
@@ -449,7 +446,7 @@ void trainNeuralNet(const std::string& fileName) {
     net.set_callback(print_callback, NULL);
     net.train_on_data(data, max_iterations, iterations_between_reports, desired_error);
 
-    net.save("neuroconnect_5_4.net");
+    net.save(NNET_FILE);
   }
 }
 
