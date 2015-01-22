@@ -340,7 +340,10 @@ class State {
       const double denom = pWin + pLoss + pDraw;
       pWin /= denom; pLoss /= denom; pDraw /= denom;
 
-      const int goodness = pWin*numeric_limits<int>::max() - pLoss*numeric_limits<int>::max();
+      int goodness = pWin*numeric_limits<int>::max() - pLoss*numeric_limits<int>::max();
+      if (player == Player::BLACK) {
+        goodness *= -1; // all states were trained with white to move
+      }
       return goodness / 100000.0;
     }
 
