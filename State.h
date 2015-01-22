@@ -333,10 +333,15 @@ class State {
       }
 
       fann_type* pred = getNeuralNet().run(input);
-      cout << pred[0] << " " << pred[1] << " " << pred[2] << endl;
 
-      const fann_type pWin = pred[0];
-      const fann_type pLoss = pred[1];
+      double pWin = exp(pred[0]);
+      double pLoss = exp(pred[1]);
+      double pDraw = exp(pred[2]);
+      const double denom = pWin + pLoss + pDraw;
+      pWin /= denom; pLoss /= denom; pDraw /= denom;
+
+      cout << pWin << " " << pLoss << " " << pDraw << endl;
+
       return pWin*numeric_limits<int>::max() - pLoss*numeric_limits<int>::max();
     }
 

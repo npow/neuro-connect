@@ -411,8 +411,8 @@ void trainNeuralNet(const std::string& fileName) {
   net.set_training_algorithm(FANN::TRAIN_BATCH);
   net.set_learning_rate(learning_rate);
   net.set_learning_momentum(learning_momentum);
-//  net.set_activation_function_hidden(FANN::SIGMOID_SYMMETRIC_STEPWISE);
-//  net.set_activation_function_output(FANN::SIGMOID_SYMMETRIC_STEPWISE);
+  net.set_activation_function_hidden(FANN::SIGMOID_SYMMETRIC_STEPWISE);
+  net.set_activation_function_output(FANN::SIGMOID_SYMMETRIC_STEPWISE);
 
   cout << endl << "Network Type                         :  ";
   switch (net.get_network_type())
