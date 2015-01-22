@@ -15,7 +15,22 @@
 #if USE_REDIS
 #include <redisclient.h>
 #endif
+
+#include "doublefann.h"
+#include "fann_cpp.h"
+
 using namespace std;
+#define NNET_FILE "neuroconnect_5_4.net"
+
+static FANN::neural_net& getNeuralNet() {
+  static bool isInitialized = false;
+  static FANN::neural_net net;
+  if (!isInitialized) {
+    net.create_from_file(NNET_FILE);
+    isInitialized = true;
+  }
+  return net;
+}
 
 enum Flag {
   LOWERBOUND = 0,
@@ -312,9 +327,51 @@ class State {
       cout << "==========" << endl;
     }
 
+    int getPredictedGoodness(const Player player) const {
+      fann_type input[m_width*m_height*2];
+      int board[4][5] = {
+        { 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0 }
+      };
+      for (const auto& p : getPieces(Player::WHITE)) {
+        const int x = p.x - 1;
+        const int y = p.y - 1;
+        board[y][x] = 1;
+      }
+
+      for (const auto& p : getPieces(Player::BLACK)) {
+        const int x = p.x - 1;
+        const int y = p.y - 1;
+        board[y][x] = 2;
+      }
+
+      for (int i = 0; i < m_height; ++i) {
+        for (int j = 0; j < m_width; ++j) {
+          int index = i*m_width + j;
+          if (board[i][j] == 1) {
+            index += 1;
+          }
+          input[index] = 1;
+        }
+      }
+
+      fann_type* pred = getNeuralNet().run(input);
+      cout << pred[0] << " " << pred[1] << " " << pred[2] << endl;
+
+      const fann_type pWin = pred[0];
+      const fann_type pLoss = pred[1];
+      free(pred);
+
+      return pWin*numeric_limits<int>::max() - pLoss*numeric_limits<int>::max();
+    }
+
     int getGoodness(const Player player) const {
-      const int val = getNumRuns(player) - getNumRuns(OTHER(player));
-      return 100 * val;
+      if (m_width == 5 && m_height == 4) {
+        return getPredictedGoodness(player);
+      }
+      return 100 * (getNumRuns(player) - getNumRuns(OTHER(player)));
     }
 
     int64_t getZobristHash() const {
