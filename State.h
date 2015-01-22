@@ -340,9 +340,8 @@ class State {
       const double denom = pWin + pLoss + pDraw;
       pWin /= denom; pLoss /= denom; pDraw /= denom;
 
-      cout << pWin << " " << pLoss << " " << pDraw << endl;
-
-      return pWin*numeric_limits<int>::max() - pLoss*numeric_limits<int>::max();
+      const int goodness = pWin*numeric_limits<int>::max() - pLoss*numeric_limits<int>::max();
+      return goodness / 100000.0;
     }
 
     int getGoodness(const Player player) const {
