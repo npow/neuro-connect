@@ -8,4 +8,3 @@ data/
 *.csv
 .ipynb_checkpoints
 *.ipynb
-fann/
