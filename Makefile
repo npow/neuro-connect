@@ -6,7 +6,7 @@ UNAME := $(shell uname)
 FANN_HOME = ./fann
 
 ifeq ($(UNAME), Linux)
-CXX = g++-4.6
+CXX = g++
 else
 CXX = g++-4.9
 endif
