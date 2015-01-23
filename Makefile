@@ -12,7 +12,7 @@ CXX = g++-4.9
 endif
 
 CXX_FLAGS=-I. -I$(FANN_HOME)/src/include -std=c++0x -MMD -O0
-LD_FLAGS = -L$(FANN_HOME)/src -lfann -lstdc++ -lpthread -lboost_thread-mt
+LD_FLAGS = -L$(FANN_HOME)/src -lfann
 
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)
