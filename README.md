@@ -16,6 +16,7 @@ Each square in the grid can be labeled by its <x,y> position, with 1,1 correspon
 
 ##### BUILD
 ```
+make libfann
 make
 ```
 
