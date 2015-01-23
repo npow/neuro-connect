@@ -147,14 +147,9 @@ static void generateStates(const int width, const int height) {
 void createTrainData(const int width, const int height, const std::string& fileName) {
   ofstream out("train.dat");
   StateMap_t savedStateMap = loadStateMap(fileName);
-  out << savedStateMap.size() << " 20 3" << endl;
+  out << savedStateMap.size() << " " << (width*height) << " 3" << endl;
   for (const auto& d : savedStateMap) {
-    int board[4][5] = {
-      { 0, 0, 0, 0, 0 },
-      { 0, 0, 0, 0, 0 },
-      { 0, 0, 0, 0, 0 },
-      { 0, 0, 0, 0, 0 }
-    };
+    int board[height][width] = { 0 };
     State s(width, height);
     s.fromHash(d.first);
 
@@ -195,10 +190,10 @@ static int print_callback(FANN::neural_net &net, FANN::training_data &train,
     return 0;
 }
 
-void trainNeuralNet(const std::string& fileName) {
+void trainNeuralNet(const unsigned int width, const unsigned int height, const std::string& fileName) {
   const float learning_rate = 0.9f;
   const float learning_momentum = 0.9f;
-  const unsigned int layers[3] = { 20, 20, 3 };
+  const unsigned int layers[3] = { width*height, width*height, 3 };
   const float desired_error = 0.001f;
   const unsigned int max_iterations = 1;
   const unsigned int iterations_between_reports = 1;
@@ -243,7 +238,7 @@ void trainNeuralNet(const std::string& fileName) {
 
 void runTests(const int width, const int height, const std::string& fileName) {
   //createTrainData(width, height, fileName);
-  trainNeuralNet(fileName);
+  trainNeuralNet(width, height, fileName);
 }
 
 void playServer(const int width, const int height, const int maxDepth, const bool isWhite, const std::string& gameId, const string& hostName, const int port) {

@@ -42,6 +42,7 @@ struct Data {
   int bestValue;
   Flag flag;
 };
+
 typedef bitset<41> Hash_t;
 typedef unordered_map<Hash_t, Data> StateMap_t;
 
@@ -348,7 +349,7 @@ class State {
     }
 
     int getGoodness(const Player player) const {
-      if (m_width == 5 && m_height == 4) {
+      if (m_width == 5 && m_height == 4) { // TODO
         return getPredictedGoodness(player);
       }
       return 100 * (getNumRuns(player) - getNumRuns(OTHER(player)));
