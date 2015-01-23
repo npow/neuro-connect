@@ -16,29 +16,36 @@ using namespace std;
 #define USE_AB_PRUNING 1
 
 static void dumpStateMap(const int width, const int height, const StateMap_t& stateMap, const string& fileName) {
+  const bool useLong = 2*width*height < 64;
   ofstream out(fileName.c_str());
   for (const auto& p : stateMap) {
-    out << p.first.to_ulong() << " " << p.second.depth << " " << p.second.bestValue
+    out << (useLong ? p.first.to_ulong() : p.first) << " " << p.second.depth << " " << p.second.bestValue
         << " " << static_cast<int>(p.second.flag) << endl;
   }
   out.close();
 }
 
-static StateMap_t loadStateMap(const std::string& fileName) {
+static StateMap_t loadStateMap(const int width, const int height, const std::string& fileName) {
   cout << "Loading statemap: " << fileName << endl;
+  const bool useLong = 2*width*height < 64;
   StateMap_t stateMap;
   ifstream in(fileName);
   string line;
   while (getline(in, line)) {
     unsigned long h = 0;
+    string s;
     int goodness = 0;
     int flag;
     Data d;
     stringstream ss(line);
-    ss >> h >> d.depth >> d.bestValue >> flag;
-    Hash_t hash(h);
+    if (useLong) {
+      ss >> h >> d.depth >> d.bestValue >> flag;
+    } else {
+      ss >> s >> d.depth >> d.bestValue >> flag;
+    }
+    Hash_t hash = useLong ? Hash_t(h) : Hash_t(s);
     d.flag = static_cast<Flag>(flag);
-    if (h) {
+    if (h || !s.empty()) {
       stateMap[hash] = d;
     }
   }
@@ -68,7 +75,7 @@ static void populateStates(const int width, const int height, const int maxDepth
   unsigned long h = 0;
   int numStates = 0;
   Game game(width, height, maxDepth);
-  StateMap_t savedStateMap = loadStateMap(fileName+"_statemap");
+  StateMap_t savedStateMap = loadStateMap(width, height, fileName+"_statemap");
   game.setStateMap(savedStateMap);
   ifstream in(fileName.c_str());
   while (in >> h) {
@@ -99,8 +106,10 @@ static void generateStates(const int width, const int height) {
   vector<bool> v(n);
   fill(v.begin() + n - r, v.end(), true);
 
-  unordered_set<Hash_t> states;
-  states.reserve(8817900);
+  const bool useLong = 2*width*height < 64;
+  stringstream ss;
+  ss << "states_" << width << "_" << height << ".txt";
+  ofstream out(ss.str());
   do {
     vector<Piece> pieces;
     pieces.reserve(r);
@@ -132,21 +141,15 @@ static void generateStates(const int width, const int height) {
       s1.fromHash(s.getHash());
 
       assert(s == s1);
-      states.insert(s.getHash());
+      out << (useLong ? s.getHash().to_ulong() : s.getHash()) << endl;
     }
   } while (next_permutation(v.begin(), v.end()));
-  stringstream ss;
-  ss << "states_" << width << "_" << height << ".txt";
-  ofstream out(ss.str());
-  for (const auto& s : states) {
-    out << s.to_ulong() << endl;
-  }
   out.close();
 }
 
 void createTrainData(const int width, const int height, const std::string& fileName) {
   ofstream out("train.dat");
-  StateMap_t savedStateMap = loadStateMap(fileName);
+  StateMap_t savedStateMap = loadStateMap(width, height, fileName);
   out << savedStateMap.size() << " " << (width*height) << " 3" << endl;
   for (const auto& d : savedStateMap) {
     int board[height][width] = { 0 };
