@@ -1,4 +1,4 @@
-.phony: all main clean
+.phony: all main clean libfann
 
 all: main
 
@@ -11,14 +11,17 @@ else
 CXX = g++-4.9
 endif
 
-CXX_FLAGS=-I. -I$(FANN_HOME)/include -std=c++0x -MMD -O0
-LD_FLAGS = -L$(FANN_HOME)/lib -lfann -lstdc++ -lpthread -lboost_thread-mt
+CXX_FLAGS=-I. -I$(FANN_HOME)/src/include -std=c++0x -MMD -O0
+LD_FLAGS = -L$(FANN_HOME)/src -lfann -lstdc++ -lpthread -lboost_thread-mt
 
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)
 DEPS := $(OBJS:.o=.d)
 
 -include $(DEPS)
+
+libfann:
+	cd $(FANN_HOME) && cmake . && make && cd -
 
 main: $(OBJS)
 	$(CXX) -o $@ $^ $(LD_FLAGS)
