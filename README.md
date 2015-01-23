@@ -1,4 +1,4 @@
-#### This project is an implementation of a neural network to play the game of Dynamic-Connect-3. 
+#### This project is a neural network that plays the game of Dynamic-Connect-3. 
 
 ##### DESCRIPTION
 The game of "dynamic connect-3" is played on a 5x4 grid as follows: Starting from the initial position illustrated below, players take turns moving one piece of their colour by one square, either horizontally or vertically. White plays first. Pieces can only move to unoccupied squares. The winner is the first player to line up three of its pieces either horizontally, vertically, or diagonally. The threefold repetition rule applies to conclude a draw. 
