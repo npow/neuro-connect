@@ -9,7 +9,6 @@ Each square in the grid can be labeled by its <x,y> position, with 1,1 correspon
 
 ##### DEPENDENCIES
 * g++ (>= 4.6)
-* boost (>= 1.53)
 * make
 * [FANN](http://leenissen.dk/fann/wp/)
 * [tcpconnect](https://github.com/vichargrave/tcpsockets)
