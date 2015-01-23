@@ -76,8 +76,9 @@ static void populateStates(const int width, const int height, const int maxDepth
     Hash_t hash(h);
     s.fromHash(hash);
 
+    int numExpanded = 0;
     game.setCurrState(s);
-    game.evaluate(s, Player::WHITE, maxDepth, -numeric_limits<int>::max(), numeric_limits<int>::max());
+    game.evaluate(s, Player::WHITE, maxDepth, -numeric_limits<int>::max(), numeric_limits<int>::max(), numExpanded);
 
 #ifndef NDEBUG
     numStates++;

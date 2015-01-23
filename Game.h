@@ -79,6 +79,7 @@ class Game {
       shared_ptr<Move> bestMove;
       int goodness = 0;
       int bestWorst = -numeric_limits<int>::max();
+      int numExpanded = 0;
       for (auto& move : moves) {
         pushState(currState);
 
@@ -89,7 +90,7 @@ class Game {
           currState = popState();
           break;
         } else {
-          goodness = evaluate(currState, currTurn, maxDepth, -numeric_limits<int>::max(), -bestWorst);
+          goodness = evaluate(currState, currTurn, maxDepth, -numeric_limits<int>::max(), -bestWorst, numExpanded);
           cout << move.toString() << ", goodness: " << goodness << endl;
           if (goodness > bestWorst) {
             bestWorst = goodness;
@@ -103,12 +104,12 @@ class Game {
 
         currState = popState();
       }
-      cout << "bestWorst: " << bestWorst << endl;
+      cout << "bestWorst: " << bestWorst << ", numExpanded: " << numExpanded << endl;
 
       return bestMove;
     }
 
-    int evaluate(State& s, const Player player, const int currDepth, int alpha, int beta) {
+    int evaluate(State& s, const Player player, const int currDepth, int alpha, int beta, int& numExpanded) {
       const int alphaOrig = alpha;
       const Hash_t hash = s.getHash();
       const auto& it = stateMap.find(hash);
@@ -147,7 +148,7 @@ class Game {
           pushState(s);
 
           assert(s.move(move.x, move.y, move.dir, true));
-          int goodness = evaluate(s, OTHER(player), currDepth-1, -beta, -alpha);
+          int goodness = evaluate(s, OTHER(player), currDepth-1, -beta, -alpha, ++numExpanded);
           if (goodness > bestVal) {
             bestVal = goodness;
             if (bestVal > maxab) {
