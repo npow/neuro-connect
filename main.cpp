@@ -302,7 +302,7 @@ int main(int argc, char* const argv[]) {
   bool isPopMode = false;
   bool isTestMode = false;
   bool useServer = false;
-  int maxDepth = 5;
+  int maxDepth = 8;
   string stateMapFileName;
   string gameId;
   string hostName = "tr5130gu-10";
@@ -332,14 +332,17 @@ int main(int argc, char* const argv[]) {
         isSmallBoard = false;
         break;
       case 'h':
-        cout << "Usage: " << argv[0] << " [-a] [-b] [-l] [-h]" << endl
-             << "\t-H\tHostname of gameserver. Default is localhost." << endl
-             << "\t-P\tPort of gameserver. Default is 12345." << endl
-             << "\t-a\tAuto-mode. Play against itself." << endl
-             << "\t-b\tPlay as black. Default is white. " << endl
-             << "\t-l\tUse large board. Default is small board." << endl
-             << "\t-s\tUse game server. Default is false." << endl
-             << "\t-h\tDisplay this help message." << endl;
+        cout << "Usage: " << argv[0] << endl
+             << "\t-H <hostname>\tHostname of gameserver. Default is localhost." << endl
+             << "\t-P <port>\tPort of gameserver. Default is 12345." << endl
+             << "\t-a\t\tAuto-mode. Play against itself." << endl
+             << "\t-b\t\tPlay as black. Default is white." << endl
+             << "\t-d <depth>\tMax depth. Default is 8." << endl
+             << "\t-l\t\tUse large board. Default is small board." << endl
+             << "\t-g\t\tGenerate states." << endl
+             << "\t-p <statemap>\tPopulate states." << endl
+             << "\t-s <gameID>\tUse game server. Default is false." << endl
+             << "\t-h\t\tDisplay this help message." << endl;
         return 1;
       case 'p':
         isPopMode = true;
