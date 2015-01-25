@@ -43,7 +43,7 @@ struct Data {
   Flag flag;
 };
 
-typedef bitset<85> Hash_t;
+typedef bitset<41> Hash_t;
 typedef unordered_map<Hash_t, Data> StateMap_t;
 
 #define NUM_PIECES_PER_SIDE 4
@@ -335,17 +335,13 @@ class State {
 
       fann_type* pred = getNeuralNet().run(input);
 
-      double pWin = exp(pred[0]);
-      double pLoss = exp(pred[1]);
-      double pDraw = exp(pred[2]);
-      const double denom = pWin + pLoss + pDraw;
-      pWin /= denom; pLoss /= denom; pDraw /= denom;
-
-      int goodness = pWin*numeric_limits<int>::max() - pLoss*numeric_limits<int>::max();
+      double pWin = pred[0];
+      cout << pWin << endl;
+      int goodness = pWin*numeric_limits<int>::max();
       if (player == Player::BLACK) {
         goodness *= -1; // all states were trained with white to move
       }
-      return goodness / 100000.0;
+      return goodness;
     }
 
     int getGoodness(const Player player) const {

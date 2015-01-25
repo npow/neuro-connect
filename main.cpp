@@ -16,36 +16,29 @@ using namespace std;
 #define USE_AB_PRUNING 1
 
 static void dumpStateMap(const int width, const int height, const StateMap_t& stateMap, const string& fileName) {
-  const bool useLong = 2*width*height < 64;
   ofstream out(fileName.c_str());
   for (const auto& p : stateMap) {
-    out << (useLong ? p.first.to_ulong() : p.first) << " " << p.second.depth << " " << p.second.bestValue
+    out << p.first.to_ulong() << " " << p.second.depth << " " << p.second.bestValue
         << " " << static_cast<int>(p.second.flag) << endl;
   }
   out.close();
 }
 
-static StateMap_t loadStateMap(const int width, const int height, const std::string& fileName) {
+static StateMap_t loadStateMap(const std::string& fileName) {
   cout << "Loading statemap: " << fileName << endl;
-  const bool useLong = 2*width*height < 64;
   StateMap_t stateMap;
   ifstream in(fileName);
   string line;
   while (getline(in, line)) {
     unsigned long h = 0;
-    string s;
     int goodness = 0;
     int flag;
     Data d;
     stringstream ss(line);
-    if (useLong) {
-      ss >> h >> d.depth >> d.bestValue >> flag;
-    } else {
-      ss >> s >> d.depth >> d.bestValue >> flag;
-    }
-    Hash_t hash = useLong ? Hash_t(h) : Hash_t(s);
+    ss >> h >> d.depth >> d.bestValue >> flag;
+    Hash_t hash(h);
     d.flag = static_cast<Flag>(flag);
-    if (h || !s.empty()) {
+    if (h) {
       stateMap[hash] = d;
     }
   }
@@ -75,7 +68,7 @@ static void populateStates(const int width, const int height, const int maxDepth
   unsigned long h = 0;
   int numStates = 0;
   Game game(width, height, maxDepth);
-  StateMap_t savedStateMap = loadStateMap(width, height, fileName+"_statemap");
+  StateMap_t savedStateMap = loadStateMap(fileName+"_statemap");
   game.setStateMap(savedStateMap);
   ifstream in(fileName.c_str());
   while (in >> h) {
@@ -106,10 +99,8 @@ static void generateStates(const int width, const int height) {
   vector<bool> v(n);
   fill(v.begin() + n - r, v.end(), true);
 
-  const bool useLong = 2*width*height < 64;
-  stringstream ss;
-  ss << "states_" << width << "_" << height << ".txt";
-  ofstream out(ss.str());
+  unordered_set<Hash_t> states;
+  states.reserve(8817900);
   do {
     vector<Piece> pieces;
     pieces.reserve(r);
@@ -141,17 +132,30 @@ static void generateStates(const int width, const int height) {
       s1.fromHash(s.getHash());
 
       assert(s == s1);
-      out << (useLong ? s.getHash().to_ulong() : s.getHash()) << endl;
+      states.insert(s.getHash());
     }
   } while (next_permutation(v.begin(), v.end()));
+  stringstream ss;
+  ss << "states_" << width << "_" << height << ".txt";
+  ofstream out(ss.str());
+  for (const auto& s : states) {
+    out << s.to_ulong() << endl;
+  }
   out.close();
 }
 
 void createTrainData(const int width, const int height, const std::string& fileName) {
   ofstream out("train.dat");
-  StateMap_t savedStateMap = loadStateMap(width, height, fileName);
-  out << savedStateMap.size() << " " << (width*height) << " 3" << endl;
+  StateMap_t savedStateMap = loadStateMap(fileName);
+  int numStates = 0;
   for (const auto& d : savedStateMap) {
+    if (abs(d.second.bestValue) > 100000) {
+      numStates++;
+    }
+  }
+  out << numStates << " 20 1" << endl;
+  for (const auto& d : savedStateMap) {
+    if (abs(d.second.bestValue) <= 100000) continue;
     int board[height][width] = { 0 };
     State s(width, height);
     s.fromHash(d.first);
@@ -194,10 +198,11 @@ static int print_callback(FANN::neural_net &net, FANN::training_data &train,
 }
 
 void trainNeuralNet(const unsigned int width, const unsigned int height, const std::string& fileName) {
-  const float learning_rate = 0.9f;
+  const float learning_rate = 0.000001f;
   const float learning_momentum = 0.9f;
-  const unsigned int layers[3] = { width*height, width*height, 3 };
-  const float desired_error = 0.001f;
+  const unsigned int layers[] = { width*height, width*height, 1 };
+  const float desired_error = 0.01f;
+  const unsigned int max_neurons = 1000;
   const unsigned int max_iterations = 1;
   const unsigned int iterations_between_reports = 1;
 
@@ -205,11 +210,16 @@ void trainNeuralNet(const unsigned int width, const unsigned int height, const s
 
   FANN::neural_net net;
   net.create_standard_array(sizeof(layers)/sizeof(*layers), layers);
-  net.set_training_algorithm(FANN::TRAIN_BATCH);
+  net.set_training_algorithm(FANN::TRAIN_INCREMENTAL);
+  net.set_train_error_function(FANN::ERRORFUNC_LINEAR);
   net.set_learning_rate(learning_rate);
   net.set_learning_momentum(learning_momentum);
-  net.set_activation_function_hidden(FANN::SIGMOID_SYMMETRIC_STEPWISE);
-  net.set_activation_function_output(FANN::SIGMOID_SYMMETRIC_STEPWISE);
+
+  net.set_activation_function_hidden(FANN::LINEAR);
+  net.set_activation_function_output(FANN::LINEAR);
+
+  net.set_bit_fail_limit(0.0);
+  net.randomize_weights(-0.25, 0.25);
 
   cout << endl << "Network Type                         :  ";
   switch (net.get_network_type())
@@ -239,9 +249,20 @@ void trainNeuralNet(const unsigned int width, const unsigned int height, const s
   }
 }
 
+void dumpErrors(const int width, const int height, const string& fileName) {
+  StateMap_t savedStateMap = loadStateMap(fileName);
+  for (const auto& d : savedStateMap) {
+    State s(width, height);
+    s.fromHash(d.first);
+    const int goodness = s.getGoodness(Player::WHITE);
+    cout << d.second.bestValue << " " << goodness << endl;
+  }
+}
+
 void runTests(const int width, const int height, const std::string& fileName) {
   //createTrainData(width, height, fileName);
-  trainNeuralNet(width, height, fileName);
+  //trainNeuralNet(width, height, fileName);
+  dumpErrors(width, height, fileName);
 }
 
 void playServer(const int width, const int height, const int maxDepth, const bool isWhite, const std::string& gameId, const string& hostName, const int port) {
