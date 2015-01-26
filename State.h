@@ -166,6 +166,9 @@ struct Move {
     }
     return ss.str();
   }
+  bool operator==(const Move& rhs) {
+    return x == rhs.x && y == rhs.y && dir == rhs.dir;
+  }
 };
 
 class State {
@@ -182,9 +185,6 @@ class State {
       getPieces(Player::BLACK).push_back(Piece(1+offset, 2+offset));
       getPieces(Player::BLACK).push_back(Piece(5+offset, 3+offset));
       getPieces(Player::BLACK).push_back(Piece(1+offset, 4+offset));
-    }
-
-    ~State() {
     }
 
     Player getCurrTurn() const {
@@ -344,11 +344,31 @@ class State {
       return goodness;
     }
 
+    int getArea(const Piece& A, const Piece& B, const Piece& C) const {
+      return abs(A.x*(B.y-C.y) + B.x*(C.y-A.y) + C.x*(A.y-B.y));
+    }
+
+    int getBestArea(const Player player) const {
+      const auto& pieces = getPieces(player);
+      const auto& ps = getCombinations_4_3();
+
+      int best = numeric_limits<int>::max();
+      for (const auto& p : ps) {
+        const int area = getArea(pieces[p[0]], pieces[p[1]], pieces[p[2]]);
+        best = min(best, area);
+      }
+      return best;
+    }
+
     int getGoodness(const Player player) const {
-      if (m_width == 5 && m_height == 4) { // TODO
+#ifdef USE_NEURALNET
+      if (m_width == 5 && m_height == 4) {
         return getPredictedGoodness(player);
       }
-      return 100 * (getNumRuns(player) - getNumRuns(OTHER(player)));
+#endif
+      const int bestArea = getBestArea(player);
+      return 200 * (getNumRuns(player) - getNumRuns(OTHER(player))) -
+             100 * (bestArea);
     }
 
     int64_t getZobristHash() const {
@@ -427,7 +447,6 @@ class State {
     }
 
     bool hasPlayerWon(const vector<Piece>& pieces) const {
-      const auto& ps = getCombinations_4_3();
       int board[6][7] = {
         { 0, 0, 0, 0, 0, 0, 0 },
         { 0, 0, 0, 0, 0, 0, 0 },
