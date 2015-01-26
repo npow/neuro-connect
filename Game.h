@@ -4,6 +4,8 @@
 #include "State.h"
 using namespace std;
 
+#define USE_AB_PRUNING 1
+
 class Game {
   public:
     Game(const int width, const int height, const int maxDepth) : numTurns(0), maxDepth(maxDepth), currTurn(Player::WHITE), currState(State(width, height)) {

@@ -13,8 +13,6 @@
 
 using namespace std;
 
-#define USE_AB_PRUNING 1
-
 static void dumpStateMap(const int width, const int height, const StateMap_t& stateMap, const string& fileName) {
   ofstream out(fileName.c_str());
   for (const auto& p : stateMap) {
@@ -214,9 +212,7 @@ void trainNeuralNet(const unsigned int width, const unsigned int height, const s
   net.set_train_error_function(FANN::ERRORFUNC_LINEAR);
   net.set_learning_rate(learning_rate);
   net.set_learning_momentum(learning_momentum);
-
   net.set_activation_function_hidden(FANN::LINEAR);
-  net.set_activation_function_output(FANN::LINEAR);
 
   net.set_bit_fail_limit(0.0);
   net.randomize_weights(-0.25, 0.25);
