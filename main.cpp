@@ -283,6 +283,7 @@ void playServer(const int width, const int height, const int maxDepth, const boo
   const Player player = isWhite ? Player::WHITE : Player::BLACK;
 
   while (game.getWinner() == Player::NONE) {
+    Timer t;
     if (game.getCurrTurn() == player) {
       shared_ptr<Move> bestMove = game.getBestMove();
       string res = "N/A";
