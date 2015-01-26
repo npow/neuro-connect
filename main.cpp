@@ -156,7 +156,7 @@ void createTrainData(const int width, const int height, const std::string& fileN
   out << numStates << " 20 1" << endl;
   for (const auto& d : savedStateMap) {
     if (abs(d.second.bestValue) <= 100000) continue;
-    int board[height][width] = { 0 };
+    int board[4][5] = { 0 };
     State s(width, height);
     s.fromHash(d.first);
 
