@@ -3,7 +3,7 @@
 all: main
 
 UNAME := $(shell uname)
-FANN_HOME = $(HOME)/Downloads/fann-2.1.0-softmax
+FANN_HOME = ./fann
 
 ifeq ($(UNAME), Linux)
 CXX = g++
