@@ -11,7 +11,7 @@ else
 CXX = g++-4.9
 endif
 
-CXX_FLAGS=-I. -I$(FANN_HOME)/src/include -std=c++0x -MMD -O0
+CXX_FLAGS=-I. -I$(FANN_HOME)/src/include -std=c++0x -MMD -O0 -DNDEBUG
 LD_FLAGS = -L$(FANN_HOME)/src -lfann
 
 SRCS := $(wildcard *.cpp)

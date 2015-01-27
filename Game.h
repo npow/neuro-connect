@@ -85,7 +85,7 @@ class Game {
       for (auto& move : moves) {
         pushState(currState);
 
-        assert(currState.move(move.x, move.y, move.dir, true));
+        currState.move(move.x, move.y, move.dir, true);
         if (currState.hasPlayerWon(currTurn)) {
           bestMove = make_shared<Move>(move);
           bestWorst = numeric_limits<int>::max();
@@ -149,7 +149,7 @@ class Game {
         for (auto& move : moves) {
           pushState(s);
 
-          assert(s.move(move.x, move.y, move.dir, true));
+          s.move(move.x, move.y, move.dir, true);
           int goodness = evaluate(s, OTHER(player), currDepth-1, -beta, -alpha, ++numExpanded);
           if (goodness > bestVal) {
             bestVal = goodness;
