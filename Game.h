@@ -144,7 +144,6 @@ class Game {
       else {
         // now it's the other player's turn
         int bestVal = -numeric_limits<int>::max();
-        int maxab = alpha;
         vector<Move> moves = s.getMoves(OTHER(player));
         for (auto& move : moves) {
           pushState(s);
@@ -153,9 +152,6 @@ class Game {
           int goodness = evaluate(s, OTHER(player), currDepth-1, -beta, -alpha, ++numExpanded);
           if (goodness > bestVal) {
             bestVal = goodness;
-            if (bestVal > maxab) {
-              maxab = bestVal;
-            }
           }
 
           s = popState();

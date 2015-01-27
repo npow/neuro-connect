@@ -196,9 +196,9 @@ static int print_callback(FANN::neural_net &net, FANN::training_data &train,
 }
 
 void trainNeuralNet(const unsigned int width, const unsigned int height, const std::string& fileName) {
-  const float learning_rate = 0.01f;
+  const float learning_rate = 0.001f;
   const float learning_momentum = 0.9f;
-  const unsigned int layers[] = { width*height, 1000000, 1 };
+  const unsigned int layers[] = { width*height, 10000, 1 };
   const float desired_error = 0.01f;
   const unsigned int max_neurons = 1000;
   const unsigned int max_iterations = 1;
