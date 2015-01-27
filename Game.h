@@ -92,7 +92,12 @@ class Game {
           currState = popState();
           break;
         } else {
-          goodness = evaluate(currState, currTurn, maxDepth, -numeric_limits<int>::max(), -bestWorst, numExpanded);
+#ifdef USE_MINIMAX
+          goodness = (currTurn == Player::BLACK ? -1 : 1) * minimax(currState, maxDepth, -numeric_limits<int>::max(), numeric_limits<int>::max(), numExpanded);
+#else
+          goodness = negamax(currState, currTurn, maxDepth, -numeric_limits<int>::max(), -bestWorst, numExpanded);
+#endif
+
           cout << move.toString() << ", goodness: " << goodness << endl;
           if (goodness > bestWorst) {
             bestWorst = goodness;
@@ -111,7 +116,61 @@ class Game {
       return bestMove;
     }
 
-    int evaluate(State& s, const Player player, const int currDepth, int alpha, int beta, int& numExpanded) {
+    int minimax(State& s, const int maxDepth, int alpha, int beta, int& numExpanded) {
+      return maxValue(s, maxDepth, alpha, beta, numExpanded);
+    }
+
+    int maxValue(State& s, const int currDepth, int alpha, int beta, int& numExpanded) {
+      ++numExpanded;
+      const Player winner = s.getWinner();
+      if (winner != Player::NONE) {
+        return (winner == Player::WHITE ? 1 : -1) * numeric_limits<int>::max();
+      } else if (currDepth == 0) {
+        return s.getGoodness(Player::WHITE);
+      }
+      int v = -numeric_limits<int>::max();
+      vector<Move> moves = s.getMoves(s.getCurrTurn());
+      for (const auto& move : moves) {
+        pushState(s);
+        s.move(move.x, move.y, move.dir, true);
+
+        v = max(v, minValue(s, currDepth-1, alpha, beta, numExpanded));
+        if (v >= beta) {
+          s = popState();
+          return v;
+        }
+        alpha = max(alpha, v);
+        s = popState();
+      }
+      return v;
+    }
+
+    int minValue(State& s, const int currDepth, int alpha, int beta, int& numExpanded) {
+      ++numExpanded;
+      const Player winner = s.getWinner();
+      if (winner != Player::NONE) {
+        return (winner == Player::WHITE ? 1 : -1) * numeric_limits<int>::max();
+      } else if (currDepth == 0) {
+        return s.getGoodness(Player::WHITE);
+      }
+      int v = numeric_limits<int>::max();
+      vector<Move> moves = s.getMoves(s.getCurrTurn());
+      for (const auto& move : moves) {
+        pushState(s);
+        s.move(move.x, move.y, move.dir, true);
+
+        v = min(v, maxValue(s, currDepth-1, alpha, beta, numExpanded));
+        if (v <= alpha) {
+          s = popState();
+          return v;
+        }
+        beta = min(beta, v);
+        s = popState();
+      }
+      return v;
+    }
+
+    int negamax(State& s, const Player player, const int currDepth, int alpha, int beta, int& numExpanded) {
       const int alphaOrig = alpha;
       const Hash_t hash = s.getHash();
       const auto& it = stateMap.find(hash);
@@ -149,7 +208,7 @@ class Game {
           pushState(s);
 
           s.move(move.x, move.y, move.dir, true);
-          int goodness = evaluate(s, OTHER(player), currDepth-1, -beta, -alpha, ++numExpanded);
+          int goodness = negamax(s, OTHER(player), currDepth-1, -beta, -alpha, ++numExpanded);
           if (goodness > bestVal) {
             bestVal = goodness;
           }

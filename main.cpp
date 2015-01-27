@@ -76,7 +76,7 @@ static void populateStates(const int width, const int height, const int maxDepth
 
     int numExpanded = 0;
     game.setCurrState(s);
-    game.evaluate(s, Player::WHITE, maxDepth, -numeric_limits<int>::max(), numeric_limits<int>::max(), numExpanded);
+    game.negamax(s, Player::WHITE, maxDepth, -numeric_limits<int>::max(), numeric_limits<int>::max(), numExpanded);
 
 #ifndef NDEBUG
     numStates++;
@@ -250,13 +250,16 @@ void dumpErrors(const int width, const int height, const string& fileName) {
     State s(width, height);
     s.fromHash(d.first);
     const int goodness = s.getGoodness(Player::WHITE);
-    cout << d.second.bestValue << " " << goodness << endl;
+    if (d.second.bestValue < 0 && goodness > 0 ||
+        d.second.bestValue > 0 && goodness < 0) {
+      cout << d.second.bestValue << " " << goodness << endl;
+    }
   }
 }
 
 void runTests(const int width, const int height, const std::string& fileName) {
   //createTrainData(width, height, fileName);
-  trainNeuralNet(width, height, fileName);
+  //trainNeuralNet(width, height, fileName);
   //dumpErrors(width, height, fileName);
 }
 

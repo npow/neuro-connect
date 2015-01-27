@@ -336,7 +336,6 @@ class State {
       fann_type* pred = getNeuralNet().run(input);
 
       double pWin = pred[0];
-      cout << pWin << endl;
       int goodness = pWin*numeric_limits<int>::max();
       if (player == Player::BLACK) {
         goodness *= -1; // all states were trained with white to move
