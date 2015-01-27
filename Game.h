@@ -135,10 +135,12 @@ class Game {
         s.move(move.x, move.y, move.dir, true);
 
         v = max(v, minValue(s, currDepth-1, alpha, beta, numExpanded));
+#if USE_AB_PRUNING
         if (v >= beta) {
           s = popState();
           return v;
         }
+#endif
         alpha = max(alpha, v);
         s = popState();
       }
@@ -160,10 +162,12 @@ class Game {
         s.move(move.x, move.y, move.dir, true);
 
         v = min(v, maxValue(s, currDepth-1, alpha, beta, numExpanded));
+#if USE_AB_PRUNING
         if (v <= alpha) {
           s = popState();
           return v;
         }
+#endif
         beta = min(beta, v);
         s = popState();
       }
