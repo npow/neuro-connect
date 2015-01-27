@@ -268,6 +268,7 @@ void playServer(const int width, const int height, const int maxDepth, const boo
 
   char line[256];
   TCPConnector* connector = new TCPConnector();
+  cout << "Connecting to: " << hostName << ":" << port << endl;
   TCPStream* stream = connector->connect(hostName.c_str(), port);
   if (!stream) {
     return;
