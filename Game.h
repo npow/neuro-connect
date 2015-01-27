@@ -125,6 +125,8 @@ class Game {
       const Player winner = s.getWinner();
       if (winner != Player::NONE) {
         return (winner == Player::WHITE ? 1 : -1) * numeric_limits<int>::max();
+      } else if (checkIsGameDrawn(s)) {
+        return 0;
       } else if (currDepth == 0) {
         return s.getGoodness(Player::WHITE);
       }
@@ -152,6 +154,8 @@ class Game {
       const Player winner = s.getWinner();
       if (winner != Player::NONE) {
         return (winner == Player::WHITE ? 1 : -1) * numeric_limits<int>::max();
+      } else if (checkIsGameDrawn(s)) {
+        return 0;
       } else if (currDepth == 0) {
         return s.getGoodness(Player::WHITE);
       }
