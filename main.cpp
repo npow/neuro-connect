@@ -212,7 +212,6 @@ void trainNeuralNet(const unsigned int width, const unsigned int height, const s
   net.set_learning_rate(learning_rate);
   net.set_learning_momentum(learning_momentum);
   net.set_activation_function_hidden(FANN::LINEAR);
-  net.set_activation_function_hidden(FANN::SOFTMAX);
 
   net.set_bit_fail_limit(0.0);
   net.randomize_weights(-0.25, 0.25);
