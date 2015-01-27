@@ -196,9 +196,9 @@ static int print_callback(FANN::neural_net &net, FANN::training_data &train,
 }
 
 void trainNeuralNet(const unsigned int width, const unsigned int height, const std::string& fileName) {
-  const float learning_rate = 0.000001f;
+  const float learning_rate = 0.01f;
   const float learning_momentum = 0.9f;
-  const unsigned int layers[] = { width*height, width*height, 1 };
+  const unsigned int layers[] = { width*height, 1000000, 1 };
   const float desired_error = 0.01f;
   const unsigned int max_neurons = 1000;
   const unsigned int max_iterations = 1;
@@ -209,10 +209,10 @@ void trainNeuralNet(const unsigned int width, const unsigned int height, const s
   FANN::neural_net net;
   net.create_standard_array(sizeof(layers)/sizeof(*layers), layers);
   net.set_training_algorithm(FANN::TRAIN_INCREMENTAL);
-  net.set_train_error_function(FANN::ERRORFUNC_LINEAR);
   net.set_learning_rate(learning_rate);
   net.set_learning_momentum(learning_momentum);
   net.set_activation_function_hidden(FANN::LINEAR);
+  net.set_activation_function_hidden(FANN::SOFTMAX);
 
   net.set_bit_fail_limit(0.0);
   net.randomize_weights(-0.25, 0.25);
@@ -257,8 +257,8 @@ void dumpErrors(const int width, const int height, const string& fileName) {
 
 void runTests(const int width, const int height, const std::string& fileName) {
   //createTrainData(width, height, fileName);
-  //trainNeuralNet(width, height, fileName);
-  dumpErrors(width, height, fileName);
+  trainNeuralNet(width, height, fileName);
+  //dumpErrors(width, height, fileName);
 }
 
 void playServer(const int width, const int height, const int maxDepth, const bool isWhite, const std::string& gameId, const string& hostName, const int port) {
