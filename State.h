@@ -43,7 +43,7 @@ struct Data {
   Flag flag;
 };
 
-typedef bitset<41> Hash_t;
+typedef bitset<85> Hash_t;
 typedef unordered_map<Hash_t, Data> StateMap_t;
 
 #define NUM_PIECES_PER_SIDE 4
