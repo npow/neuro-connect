@@ -158,16 +158,42 @@ struct Move {
   int x;
   int y;
   Direction dir;
+
+  string dirStr(const Direction dir) const {
+    if (Direction::N == dir) {
+      return "N";
+    } else if (Direction::E == dir) {
+      return "E";
+    } else if (Direction::W == dir) {
+      return "W";
+    } else if (Direction::S == dir) {
+      return "S";
+    }
+    return "";
+  }
+
   string toString() const {
-    static const char dirStr[4] = { 'N', 'S', 'E', 'W' };
     stringstream ss;
     if (x != 0 && y != 0 && dir != Direction::END) {
-      ss << x << y << dirStr[dir];
+      ss << x << y << dirStr(dir);
     }
     return ss.str();
   }
-  bool operator==(const Move& rhs) {
+  bool operator==(const Move& rhs) const {
     return x == rhs.x && y == rhs.y && dir == rhs.dir;
+  }
+  bool operator<(const Move& rhs) const {
+    if (x < rhs.x) {
+      return true;
+    } else if (x == rhs.x) {
+      if (y < rhs.y) {
+        return true;
+      } else {
+        return dir < rhs.dir;
+      }
+    } else {
+      return false;
+    }
   }
 };
 
@@ -231,7 +257,7 @@ class State {
       v.reserve(8);
       for (const auto& piece : getPieces(player)) {
         for (int dir = Direction::N; dir != Direction::END; ++dir) {
-          if (isValidMove(&piece, static_cast<Direction>(dir))) {
+          if (isValidMove(piece, static_cast<Direction>(dir))) {
             v.push_back(Move(piece.x, piece.y, static_cast<Direction>(dir)));
           }
         }
@@ -240,35 +266,34 @@ class State {
     }
 
     bool move(const int x, const int y, const Direction dir, bool skipVerification = false) {
-      if (x < 1 || x > m_width || y < 1 || y > m_height) return false;
+      if (x < 1 || x > m_width || y < 1 || y > m_height || !hasPiece(x, y)) return false;
       return movePiece(findPiece(x, y), dir, skipVerification);
     }
 
-    bool movePiece(Piece* const piece, const Direction dir, bool skipVerification) {
-      if (!piece || (!skipVerification && !isValidMove(piece, dir))) return false;
+    bool movePiece(Piece& piece, const Direction dir, bool skipVerification) {
+      if (!skipVerification && !isValidMove(piece, dir)) return false;
       if (Direction::N == dir) {
-        piece->y -= 1;
+        piece.y -= 1;
       } else if (Direction::S == dir) {
-        piece->y += 1;
+        piece.y += 1;
       } else if (Direction::E == dir) {
-        piece->x += 1;
+        piece.x += 1;
       } else if (Direction::W == dir) {
-        piece->x -= 1;
+        piece.x -= 1;
       }
       m_currTurn = OTHER(m_currTurn);
       return true;
     }
 
-    bool isValidMove(const Piece* const piece, const Direction dir) const {
-      if (!piece) return false;
+    bool isValidMove(const Piece& piece, const Direction dir) const {
       if (Direction::N == dir) {
-        if (piece->y == 1 || findPiece(piece->x, piece->y-1)) return false;
+        if (piece.y == 1 || hasPiece(piece.x, piece.y-1)) return false;
       } else if (Direction::S == dir) {
-        if (piece->y == m_height || findPiece(piece->x, piece->y+1)) return false;
+        if (piece.y == m_height || hasPiece(piece.x, piece.y+1)) return false;
       } else if (Direction::E == dir) {
-        if (piece->x == m_width || findPiece(piece->x+1, piece->y)) return false;
+        if (piece.x == m_width || hasPiece(piece.x+1, piece.y)) return false;
       } else if (Direction::W == dir) {
-        if (piece->x == 1 || findPiece(piece->x-1, piece->y)) return false;
+        if (piece.x == 1 || hasPiece(piece.x-1, piece.y)) return false;
       }
       return true;
     }
@@ -279,7 +304,7 @@ class State {
       else return Player::NONE;
     }
 
-    inline bool hasPlayerWon(const Player player) const {
+    bool hasPlayerWon(const Player player) const {
       return hasPlayerWon(getPieces(player));
     }
 
@@ -497,22 +522,46 @@ class State {
       return dx == 1 && dy == 1;
     }
 
-    Piece* findPiece(const int x, const int y) {
-      return const_cast<Piece*>(static_cast<const State*>(this)->findPiece(x, y));
-    }
-
-    const Piece* findPiece(const int x, const int y) const {
+    bool hasPiece(const int x, const int y) const {
       for (const auto& piece : getPieces(Player::WHITE)) {
         if (piece.x == x && piece.y == y) {
-          return &piece;
+          return true;
         }
       }
       for (const auto& piece : getPieces(Player::BLACK)) {
         if (piece.x == x && piece.y == y) {
-          return &piece;
+          return true;
         }
       }
-      return nullptr;
+      return false;
+    }
+
+    Piece& findPiece(const int x, const int y) {
+      for (auto& piece : getPieces(Player::WHITE)) {
+        if (piece.x == x && piece.y == y) {
+          return piece;
+        }
+      }
+      for (auto& piece : getPieces(Player::BLACK)) {
+        if (piece.x == x && piece.y == y) {
+          return piece;
+        }
+      }
+      assert(false);
+    }
+
+    const Piece& findPiece(const int x, const int y) const {
+      for (const auto& piece : getPieces(Player::WHITE)) {
+        if (piece.x == x && piece.y == y) {
+          return piece;
+        }
+      }
+      for (const auto& piece : getPieces(Player::BLACK)) {
+        if (piece.x == x && piece.y == y) {
+          return piece;
+        }
+      }
+      assert(false);
     }
 
     inline bool isEqual(const vector<Piece>& v1, const vector<Piece>& v2) const {

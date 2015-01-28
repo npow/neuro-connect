@@ -1,10 +1,13 @@
 #ifndef INCLUDED_GAME_H
 #define INCLUDED_GAME_H
 
+#include <map>
+#include <random>
 #include "State.h"
 using namespace std;
 
 #define USE_AB_PRUNING 1
+static mt19937 rng(42);
 
 class Game {
   public:
@@ -76,7 +79,71 @@ class Game {
       return checkIsGameDrawn(currState);
     }
 
+    int playToEnd(State& s, const Player player, const int currDepth, int& leavesReached) {
+      const Player winner = s.getWinner();
+      if (winner != Player::NONE) {
+        leavesReached++;
+        return (player == winner ? 1 : -1) * numeric_limits<int>::max();
+      } else if (checkIsGameDrawn(s)) {
+        leavesReached++;
+        return 0;
+      }
+
+      vector<Move> moves = s.getMoves(s.getCurrTurn());
+      uniform_int_distribution<int> uni(0, (int)moves.size());
+      const int index = uni(rng);
+      pushState(s);
+
+      Move move = moves[index];
+      s.move(move.x, move.y, move.dir, false);
+      int goodness = playToEnd(s, player, currDepth, leavesReached);
+      s = popState();
+      return goodness;
+    }
+
+    shared_ptr<Move> getBestMoveMonteCarlo() {
+      int leavesReached = 0;
+      clock_t startTime = clock();
+      const vector<Move> moves = currState.getMoves(currTurn);
+      map<Move, int> goodnessMap;
+      uniform_int_distribution<int> uni(0, (int)moves.size()-1);
+      while (true) {
+        const double elapsedTime = ((clock() - startTime)/(double)CLOCKS_PER_SEC);
+        if (elapsedTime > 9.0) break;
+
+        pushState(currState);
+
+        const int index = uni(rng);
+        const Move move = moves[index];
+
+        currState.move(move.x, move.y, move.dir, true);
+
+        const int goodness = playToEnd(currState, currTurn, 10, leavesReached);
+        if (goodnessMap.find(move) == goodnessMap.end()) {
+          goodnessMap[move] = 0;
+        }
+        goodnessMap[move] += goodness;
+
+        currState = popState();
+      }
+      cout << "leaves reached: " << leavesReached << endl;
+
+      shared_ptr<Move> bestMove;
+      int bestValue = -numeric_limits<int>::max();
+      for (const auto& p : goodnessMap) {
+        cout << "goodness: " << p.second << endl;
+        if (p.second > bestValue) {
+          bestValue = p.second;
+          bestMove = make_shared<Move>(p.first);
+        }
+      }
+      return bestMove;
+    }
+
     shared_ptr<Move> getBestMove() {
+#ifdef USE_MONTECARLO
+      return getBestMoveMC();
+#endif
       vector<Move> moves = currState.getMoves(currTurn);
       shared_ptr<Move> bestMove;
       int goodness = 0;
